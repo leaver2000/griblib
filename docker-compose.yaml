@@ -1,0 +1,15 @@
+---
+version: '3.9'
+services:
+  griblib.slim:
+    image: devcontainer/griblib:2.24.2-slim
+    build:
+        context: .
+        args:
+            BUILD_SIZE: slim
+  griblib.full:
+    image: devcontainer/griblib:2.24.2-full
+    build:
+        context: .
+        args:
+            BUILD_SIZE: full
