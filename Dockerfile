@@ -1,95 +1,74 @@
 # syntax=docker/dockerfile:1
-# [COMPILER]
+# [DOWNLOAD ARCHIVES]
 FROM mcr.microsoft.com/vscode/devcontainers/python:3.10-bullseye as compiler
-# temp build directory & suppress debconf questions.
+
+
 RUN export DEBIAN_FRONTEND=noninteractive; apt-get update && \
     apt-get install -y --no-install-recommends cmake gfortran build-essential sqlite3
-# add the source files
-ADD ./bin/eccodes-2.24.2-Source.tar.gz /
-ADD ./bin/geos-3.10.3.tar.bz2 /
-ADD ./bin/gdal-3.5.0.tar.gz /
-ADD ./bin/proj-6.0.0.tar.gz /
-# [ECCODES] https://confluence.ecmwf.int/display/ECC
-ARG ECCODES_DIR="/usr/src/eccodes"
-WORKDIR /build/eccodes
-# compile
-RUN cmake /eccodes-2.24.2-Source -DCMAKE_INSTALL_PREFIX="$ECCODES_DIR" -DENABLE_JPG=ON
-# install and test
-RUN make && ctest && make install
 
-# [GEOS] https://trac.osgeo.org/geos/
-ARG GEOS_DIR="/usr/src/geos"
+ARG PROJ_LOCAL="/usr/local/proj"
+ARG GDAL_LOCAL="/usr/local/gdal"
+ARG GEOS_LOCAL="/usr/local/geos"
+ARG ECCODES_LOCAL="/usr/local/eccodes"
+# __________________________________________________________________________________________________________________
+ARG PROJ="proj-6.3.2" 
+# https://proj.org
+#
+# PROJ is a generic coordinate transformation software that transforms geospatial coordinates from one coordinate reference system (CRS) to another. 
+# This includes cartographic projections as well as geodetic transformations. PROJ is released under the X/MIT open source license
+WORKDIR /build/proj
+RUN wget https://download.osgeo.org/proj/${PROJ}.tar.gz && tar -xf ${PROJ}.tar.gz && cd ${PROJ} && \
+    ./configure --with-python=python3
+    
+RUN cd ${PROJ} && cmake . -DCMAKE_INSTALL_PREFIX=${PROJ_LOCAL} && make && ctest && make install
+# __________________________________________________________________________________________________________________
+ARG GEOS="geos-3.10.3" 
+# https://libgeos.org/
+#
+# GEOS is a C/C++ library for computational geometry with a focus on algorithms used in geographic information systems (GIS) software. 
+# It implements the OGC Simple Features geometry model and provides all the spatial functions in that standard as well as many others. 
+# GEOS is a core dependency of PostGIS, QGIS, GDAL, and Shapely.
 WORKDIR /build/geos
-# compile
-RUN cmake /geos-3.10.3 -DCMAKE_INSTALL_PREFIX="$GEOS_DIR"
-# install and test
-RUN make && ctest && make install
-
-
-#[PROJ] https://proj.org/install.html https://github.com/OSGeo/gdal/blob/master/docker/ubuntu-small/Dockerfile
-ARG PROJ_INSTALL_PREFIX=/usr/src/proj
-WORKDIR /build/proj 
-RUN cd proj-6.0.0 && ./configure --prefix=${PROJ_INSTALL_PREFIX} --disable-static && \
-    CFLAGS='-DPROJ_RENAME_SYMBOLS -O2' CXXFLAGS='-DPROJ_RENAME_SYMBOLS -DPROJ_INTERNAL_CPP_NAMESPACE -O2' \
-    cmake . \
-        -DBUILD_SHARED_LIBS=ON \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX=${PROJ_INSTALL_PREFIX} \
-        -DBUILD_TESTING=OFF && \
-    make -j4 && \
-    make install 
-# RUN echo ls
-# RUN make -j4 && make install
-# RUN make -j4 && make install
-# RUN git clone https://github.com/OSGeo/proj.4 /proj && cd /proj && ./autogen.sh
-
-# RUN export CFLAGS="-DPROJ_RENAME_SYMBOLS -O2" && \
-#     export CXXFLAGS="$CFLAGS -DPROJ_INTERNAL_CPP_NAMESPACE" && \
-#     ./configure --prefix=/my/install/prefix --disable-static && \
-#     make -j4 && \
-#     make install && \
-#     cd /my/install/prefix/lib
-# Rename the library to libinternalproj
-# mv libproj.so.19.1.0 libinternalproj.so.19.1.0
-# ln -s libinternalproj.so.19.1.0 libinternalproj.so.19
-# ln -s libinternalproj.so.19.1.0 libinternalproj.so
-# rm -f libproj.*
-# # Install the patchelf package
-# apt install patchelf
-# patchelf --set-soname libinternalproj.so libinternalproj.so
-
-
-# [GDAL] https://gdal.org/
-# ARG GDAL_DIR="/usr/src/gdal"
-# WORKDIR /build/gdal
-# ENV PROJ_LIBRARY=/usr/src/proj/lib
-# ENV PROJ_INCLUDE_DIR=/usr/src/proj/include
-# # ADD ./gdal-3.5.0.tar.gz /
-# # # compile
-# # # https://trac.osgeo.org/gdal/wiki/BuildingOnUnixGDAL25dev
-# RUN cmake /gdal-3.5.0 -DCMAKE_INSTALL_PREFIX="$GDAL_DIR"
+RUN wget https://download.osgeo.org/geos/${GEOS}.tar.bz2 && tar -xf ${GEOS}.tar.bz2 && cd ${GEOS} && \
+    ./configure --with-python=python3
+RUN cd ${GEOS} && cmake . -DCMAKE_INSTALL_PREFIX=${GEOS_LOCAL} && make && ctest && make install
+# RUN cmake /geos-3.10.3 -DCMAKE_INSTALL_PREFIX="$GEOS_DIR"
 # # install and test
 # RUN make && ctest && make install
-# #
-# FROM mcr.microsoft.com/vscode/devcontainers/python:3.10-bullseye
+# .tar.bz2
+# RUN cmake /geos-3.10.3 -DCMAKE_INSTALL_PREFIX="$GEOS_DIR"
+# # install and test
+# RUN make && ctest && make install
 
-# ARG ECCODES_DIR="/usr/src/eccodes"
-# COPY --from=compiler $ECCODES_DIR $ECCODES_DIR
-# ENV ECCODES_DIR="$ECCODES_DIR"
 
-# ARG GEOS_DIR="/usr/src/geos"
-# COPY --from=compiler $GEOS_DIR $GEOS_DIR
+# __________________________________________________________________________________________________________________
 
-# ARG GDAL_DIR="/usr/src/gdal"
-# COPY --from=compiler $GDAL_DIR $GDAL_DIR
-# ENV GDAL_DIR="$GDAL_DIR"
+RUN python3  -m pip install numpy
+# https://gdal.org/build_hints.html
+ARG GDAL="gdal-3.5.0"
+#  GDAL is a translator library for raster and vector geospatial data formats that is released under an MIT style Open Source License by the Open Source Geospatial Foundation. 
+#  As a library, it presents a single raster abstract data model and single vector abstract data model to the calling application for all supported formats. 
+#  It also comes with a variety of useful command line utilities for data translation and processing. The NEWS page describes the May 2022 GDAL/OGR 3.5.0 release.
+WORKDIR /tmp/gdal
+RUN wget https://download.osgeo.org/gdal/3.5.0/${GDAL}.tar.gz && tar -xf ${GDAL}.tar.gz
+RUN cd ${GDAL} && mkdir build/ && cd build/ && cmake .. && cmake --build . && \
+    cmake --build . --target install
+# RUN cd ${GDAL} && ./configure --prefix=${GDAL_LOCAL} --with-python=python3 --with-proj=${PROJ_LOCAL} && \
+#     cmake . -DCMAKE_INSTALL_PREFIX=${GDAL_LOCAL} && \
+#     make && ctest && make install
+    # cmake . -DCMAKE_INSTALL_PREFIX=${GDAL_LOCAL}
+# RUN 
+# RUN wget https://download.osgeo.org/gdal/3.5.0/${GDAL}.tar.gz && tar -xf ${GDAL}.tar.gz && cd ${GDAL} && \
+#     ./configure --with-python=python3 --with-proj=${PROJ_LOCAL} && \
+#     cmake . -DCMAKE_INSTALL_PREFIX=${GDAL_LOCAL} && \
+#     make && ctest && make install
 
-# ARG VIRTUAL_ENV="/opt/venv"
-# RUN python3 -m venv "$VIRTUAL_ENV"
-
-# ENV PATH="$VIRTUAL_ENV/bin:$GEOS_DIR/bin:$PATH"
-# # upgrade pip
-# RUN python3 -m pip install --upgrade pip && pip install wheel
-# # COPY ./requirements-${BUILD_SIZE}.txt ./requirements.txt 
-# # install the requirements
-# RUN pip install numpy cfgirb eccodes shapely pygeos 
+FROM mcr.microsoft.com/vscode/devcontainers/python:3.10-bullseye
+ARG PROJ_LOCAL="/usr/local/proj"
+ARG GEOS_LOCAL="/usr/local/geos"
+ARG GDAL_LOCAL="/usr/local/gdal"
+ARG ECCODES_LOCAL="/usr/local/eccodes"
+COPY --from=compiler $PROJ_LOCAL $PROJ_LOCAL
+COPY --from=compiler $GEOS_LOCAL $GEOS_LOCAL
+COPY --from=compiler $GDAL_LOCAL $GDAL_LOCAL
+# tar -xf gdal-3.5.0.tar.gz -C . && rm -rf gdal-3.5.0.tar.gz

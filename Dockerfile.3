@@ -1,0 +1,78 @@
+# syntax=docker/dockerfile:1
+# [DOWNLOAD ARCHIVES]
+FROM mcr.microsoft.com/vscode/devcontainers/python:3.10-bullseye as downloader
+
+WORKDIR /downloads
+RUN wget https://confluence.ecmwf.int/download/attachments/45757960/eccodes-2.24.2-Source.tar.gz --directory-prefix=/tmp/download && \
+    wget http://download.osgeo.org/geos/geos-3.10.3.tar.bz2 --directory-prefix=/tmp/download && \
+    wget https://github.com/OSGeo/gdal/releases/download/v3.5.0/gdal-3.5.0.tar.gz --directory-prefix=/tmp/download && \
+    wget https://download.osgeo.org/proj/proj-9.0.1.tar.gz --directory-prefix=/tmp/download
+
+RUN for file in /tmp/download/*;do tar -xf $file;done
+#
+# --|| BUILD & COMPILE ||--
+FROM mcr.microsoft.com/vscode/devcontainers/python:3.10-bullseye as builder
+# copy the downloaded tarball's
+COPY --from=downloader /downloads /
+# install build tools
+RUN export DEBIAN_FRONTEND=noninteractive; apt-get update && \
+    apt-get install -y --no-install-recommends cmake gfortran build-essential sqlite3 
+# [ECCODES]: https://confluence.ecmwf.int/display/ECC
+# ecCodes is a package developed by ECMWF which provides an application programming interface and a set of tools for decoding and encoding messages in the following formats:
+# - WMO FM-92 GRIB edition 1 and edition 2
+# - WMO FM-94 BUFR edition 3 and edition 4
+# - WMO GTS abbreviated header (only decoding).
+# With ecCodes 2.13.0, there is a new Python3 interface based on CFFI (rather than SWIG). 
+# This interface is separated into its own package which is available on PyPI (https://pypi.org/project/eccodes/)
+ARG ECCODES_INSTALL_PREFIX="/usr/src/eccodes"
+WORKDIR /build/eccodes
+# compile
+RUN cmake /eccodes-2.24.2-Source -DCMAKE_INSTALL_PREFIX=${ECCODES_INSTALL_PREFIX} -DENABLE_JPG=ON && \
+    make && ctest && make install
+#
+# [GEOS] https://libgeos.org/
+# GEOS is a C/C++ library for computational geometry with a focus on algorithms used in geographic information systems (GIS) software. 
+# It implements the OGC Simple Features geometry model and provides all the spatial functions in that standard as well as many others. 
+# GEOS is a core dependency of PostGIS, QGIS, GDAL, and Shapely.
+ARG GEOS_INSTALL_PREFIX="/usr/src/geos"
+WORKDIR /build/geos
+# compile
+RUN cmake /geos-3.10.3 -DCMAKE_INSTALL_PREFIX=${GEOS_INSTALL_PREFIX} && \
+    make && ctest && make install
+
+# PROJ_LIBRARY PROJ_INCLUDE_DIR
+
+#https://github.com/OSGeo/gdal/blob/master/docker/ubuntu-small/Dockerfile
+# [PROJ] https://proj.org/install.html 
+# PROJ is a generic coordinate transformation software that transforms geospatial coordinates from one coordinate reference system (CRS) to another. 
+# This includes cartographic projections as well as geodetic transformations. PROJ is released under the X/MIT open source license
+# RUN DEBIAN_FRONTEND=noninteractive; apt-get install proj-bin
+ARG PROJ_INSTALL_PREFIX="/usr/src/proj"
+WORKDIR /build/proj 
+# RUN /proj-9.0.0/configure --prefix=${PROJ_INSTALL_PREFIX} --disable-static
+RUN cd /proj-9.0.1 && mkdir build && cmake ..
+# RUN cmake /proj-6.0.0 && cmake /proj-6.0.0 --build & cmake /proj-6.0.0 --target .
+# RUN CFLAGS="-DPROJ_RENAME_SYMBOLS -O2" CXXFLAGS="-DPROJ_RENAME_SYMBOLS -DPROJ_INTERNAL_CPP_NAMESPACE -O2"; \
+#     cmake /proj-6.0.0 
+#     #-DCMAKE_INSTALL_PREFIX=${PROJ_INSTALL_PREFIX} && \
+#     make -j4 && ctest && make install 
+# [GDAL] https://gdal.org/
+#  GDAL is a translator library for raster and vector geospatial data formats that is released under an MIT style Open Source License by the Open Source Geospatial Foundation. 
+#  As a library, it presents a single raster abstract data model and single vector abstract data model to the calling application for all supported formats. 
+#  It also comes with a variety of useful command line utilities for data translation and processing. The NEWS page describes the May 2022 GDAL/OGR 3.5.0 release.
+# ARG GDAL_INSTALL_PREFIX="/usr/src/gdal"
+# WORKDIR /build/gdal
+# # compile
+# RUN cmake /gdal-3.5.0 -DCMAKE_INSTALL_PREFIX=${GDAL_INSTALL_PREFIX} && \
+#     make && ctest && make install
+# ARG ECCODES_URL=https://confluence.ecmwf.int/download/attachments/45757960/eccodes-2.24.2-Source.tar.gz
+# ARG GEOS_URL=http://download.osgeo.org/geos/geos-3.10.3.tar.bz2
+# # ARG URLS=#{https://confluence.ecmwf.int/download/attachments/45757960/eccodes-2.24.2-Source.tar.gz,http://download.osgeo.org/geos/geos-3.10.3.tar.bz2}
+# RUN for url in {${ECCODES_URL} ${GEOS_URL}}; wget $url --directory-prefix=/downloads;done
+# RUN wget https://confluence.ecmwf.int/download/attachments/45757960/eccodes-2.24.2-Source.tar.gz  --directory-prefix=/downloads
+# RUN  for i in /downloads; do tar -xf $i; done
+# RUN for i in /build_thirdparty/usr/lib/*; do
+
+# FROM mcr.microsoft.com/vscode/devcontainers/python:3.10-bullseye
+
+# && for i in /build_thirdparty/usr/lib/*; do
