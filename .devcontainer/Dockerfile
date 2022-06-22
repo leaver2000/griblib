@@ -1,45 +1,22 @@
-# syntax=docker/dockerfile:1
-# [eccodes]
-FROM mcr.microsoft.com/vscode/devcontainers/python:3.10-bullseye as eccodes
-# /path/to/where/you/install/eccodes
-ARG ECCODES_DIR="/usr/src/eccodes"
-# temp build directory
-WORKDIR /build
-# suppress debconf questions.
-RUN export DEBIAN_FRONTEND=noninteractive; apt-get update && \
-    apt-get install -y --no-install-recommends cmake gfortran build-essential
-# add the eccodes source archive
-ADD ./eccodes-2.24.2-Source.tar.gz /
-# compile
-RUN cmake /eccodes-2.24.2-Source -DCMAKE_INSTALL_PREFIX="$ECCODES_DIR" -DENABLE_JPG=ON
-# install and test
-RUN make && ctest && make install
+# See here for image contents: https://github.com/microsoft/vscode-dev-containers/tree/v0.238.0/containers/python-3-miniconda/.devcontainer/base.Dockerfile
 
-# [venv]
-FROM mcr.microsoft.com/vscode/devcontainers/python:3.10-bullseye as venv
-# virtual environment
-ARG BUILD_SIZE="slim"
-ARG VIRTUAL_ENV="/opt/venv"
-RUN python3 -m venv "$VIRTUAL_ENV"
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-# upgrade pip
-RUN python3 -m pip install --upgrade pip && pip install wheel
-COPY ./requirements-${BUILD_SIZE}.txt ./requirements.txt 
-# install the requirements
-RUN pip install -r requirements.txt
+FROM mcr.microsoft.com/vscode/devcontainers/miniconda:0-3
 
-FROM mcr.microsoft.com/vscode/devcontainers/python:3.10-bullseye
-# copy the eccodes
-WORKDIR /home/environment
+# [Choice] Node.js version: none, lts/*, 16, 14, 12, 10
+ARG NODE_VERSION="none"
+RUN if [ "${NODE_VERSION}" != "none" ]; then su vscode -c "umask 0002 && . /usr/local/share/nvm/nvm.sh && nvm install ${NODE_VERSION} 2>&1"; fi
 
-ARG ECCODES_DIR="/usr/src/eccodes"
-COPY --from=eccodes $ECCODES_DIR $ECCODES_DIR
-ENV ECCODES_DIR="$ECCODES_DIR"
-# copy the venv
-ARG VIRTUAL_ENV="/opt/venv"
-COPY --from=venv $VIRTUAL_ENV $VIRTUAL_ENV
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-# run a self check
-RUN python -m cfgrib selfcheck
+# Copy environment.yml (if found) to a temp location so we update the environment. Also
+# copy "noop.txt" so the COPY instruction does not fail if no environment.yml exists.
+COPY environment.yml* .devcontainer/noop.txt /tmp/conda-tmp/
+RUN if [ -f "/tmp/conda-tmp/environment.yml" ]; then umask 0002 && /opt/conda/bin/conda env update -n base -f /tmp/conda-tmp/environment.yml; fi \
+    && rm -rf /tmp/conda-tmp
 
-COPY ./environment/ /home/environment/
+# [Optional] Uncomment to install a different version of Python than the default
+RUN conda install -y python=3.10 \
+    && pip install --no-cache-dir pipx \
+    && pipx reinstall-all
+
+# [Optional] Uncomment this section to install additional OS packages.
+# RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
+#     && apt-get -y install --no-install-recommends <your-package-list-here>
