@@ -1,33 +1,61 @@
 # syntax=docker/dockerfile:1
 
-ARG BASE_REGISTRY=mcr.microsoft.com
-ARG BASE_IMAGE=vscode/devcontainers/base 
-ARG BASE_TAG=ubuntu-22.04
+ARG BASE_REGISTRY=mcr.microsoft.com \
+    BASE_IMAGE=vscode/devcontainers/base \
+    BASE_TAG=ubuntu-22.04
 
-FROM ${BASE_REGISTRY}/${BASE_IMAGE}:${BASE_TAG} as builder
-
-USER root
+FROM ${BASE_REGISTRY}/${BASE_IMAGE}:${BASE_TAG} as eccodes
+ARG ECCODES=eccodes-2.24.2-Source \
+    ECCODES_DIR=/usr/include/eccodes
 
 WORKDIR /build
 
+# first build the eccodes
+# eccodes are a dependency for the python package cfgib which will be the primary
+# degribing engine used in this container
+RUN apt-get update -y \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing --no-install-recommends \
+        build-essential \
+        cmake \
+        gfortran 
+
+# There is a newer version of eccodes avaliable but I've found this one works well with python 3.10 and ubuntu 22.04
+RUN wget https://confluence.ecmwf.int/download/attachments/45757960/${ECCODES}.tar.gz  \
+        && tar -xf ${ECCODES}.tar.gz && mkdir ${ECCODES}/build \
+        && cd ${ECCODES}/build \
+        && cmake -DCMAKE_INSTALL_PREFIX=${ECCODES_DIR} .. \
+        && make && make install
+
+#OSGEO
+FROM ${BASE_REGISTRY}/${BASE_IMAGE}:${BASE_TAG} as osgeo
 
 RUN apt-get update -y \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing --no-install-recommends \
-        build-essential cmake gfortran \
-        libproj-dev=8.2.1-1 proj-data=8.2.1-1 proj-bin=8.2.1-1 libgeos-dev=3.10.2-1 libgdal-dev \
-        python3-dev python3-pip python3-venv
+        libproj-dev=8.2.1-1 \
+        # proj-data=8.2.1-1 \
+        proj-bin=8.2.1-1 \
+        libgeos-dev=3.10.2-1 \
+        libgdal-dev=3.4.1+dfsg-1build4
 
-ARG ECCODES="eccodes-2.24.2-Source" 
 
-RUN wget https://confluence.ecmwf.int/download/attachments/45757960/${ECCODES}.tar.gz  \
-    && tar -xf ${ECCODES}.tar.gz && mkdir ${ECCODES}/build && cd ${ECCODES}/build \
-    && cmake -DCMAKE_INSTALL_PREFIX=/usr/src/eccode .. \
-    && make && make install
+# CARTOPY
+FROM ${BASE_REGISTRY}/${BASE_IMAGE}:${BASE_TAG} as cartopy
+WORKDIR /build
+ARG ECCODES=eccodes-2.24.2-Source \
+    ECCODES_DIR=/usr/include/eccodes \
+    VENV_DIR=/opt/venv \
+    VENV_BIN=/opt/venv/bin
 
-ENV PATH="/opt/venv/bin:$PATH"
-ENV ECCODES_DIR="/usr/src/eccode"
-ADD ./cartopy.tar.gz .
+COPY --from=osgeo /usr /usr
+ENV PATH=$VENV_BIN:$PATH 
 
+RUN apt-get update -y \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing --no-install-recommends \
+        build-essential \
+        python3-dev \
+        python3-pip \
+        python3-venv
+# cartopy dependcies
 RUN python3 -m venv /opt/venv \
     && python3 -m pip install --upgrade pip \
     && python3 -m pip install \
@@ -37,34 +65,43 @@ RUN python3 -m venv /opt/venv \
         Cython==0.29.30 \
         pyproj==3.3.1 \
         matplotlib==3.5.2 \
-    && python3 -m pip install shapely==1.8.2 --no-binary shapely \
-    && cd cartopy/ && python3 setup.py install && python3 -c "import cartopy.crs as ccrs"
-    
-COPY ./requirements.txt ./requirements.txt
+    && python3 -m pip install shapely==1.8.2 --no-binary shapely
+# installing cartopy docker will automaticly unzip the tar
+ADD ./cartopy-0.20.2-Source.tar.gz .
+# set the workdir to the unziped location
+WORKDIR /build/cartopy-0.20.2-Source
+# install cartopy into the venv
+RUN python3 setup.py install && python3 -c "import cartopy.crs as ccrs"
 
-RUN python3 -m pip install -r requirements.txt
 
 
 FROM ${BASE_REGISTRY}/${BASE_IMAGE}:${BASE_TAG}
-
 USER root
-
 WORKDIR /home
+ARG USERNAME=vscode \
+    USER_UID=1000 \
+    USER_GID=$USER_UID \
+    ECCODES=eccodes-2.24.2-Source \
+    ECCODES_DIR=/usr/include/eccodes \
+    VENV_DIR=/opt/venv \
+    VENV_BIN=/opt/venv/bin
+
+ENV PATH=$VENV_BIN:$PATH \
+    ECCODES_DIR=$ECCODES_DIR
 
 RUN apt-get update -y \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing --no-install-recommends \
-    python3-venv python3-pip
+        python3-pip
+        # python3-venv
 
-RUN chmod -R 777 /tmp
+# proj gdal geos
+COPY --from=osgeo /usr /usr
+# ecCodes
+COPY --from=eccodes $ECCODES_DIR $ECCODES_DIR
+# cartopy
+COPY --from=cartopy $VENV_DIR $VENV_DIR
 
-USER vscode
+COPY ./requirements.txt ./requirements.txt
 
-ENV PATH="/opt/venv/bin:$PATH"
-
-ENV ECCODES_DIR="/usr/src/eccode"
-
-COPY --chown=vscode --from=builder /opt/venv /opt/venv
-
-COPY --chown=vscode --from=builder /usr /usr
-
-RUN python3 -c "import cartopy.crs as ccrs"
+RUN python3 -m pip install -r requirements.txt && python3 -m cfgrib selfcheck
+# '/opt/venv/lib/python3.10/site-packages/Cartopy-0.0.0-py3.10-linux-x86_64.egg/cartopy
