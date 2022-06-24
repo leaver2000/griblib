@@ -66,6 +66,7 @@ RUN python3 -m venv /opt/venv \
         Cython==0.29.30 \
         pyproj==3.3.1 \
         matplotlib==3.5.2 \
+        scipy==1.8.1 \
     && python3 -m pip install shapely==1.8.2 --no-binary shapely \
     # download and extract the cartopy zip from the archives
     && wget https://github.com/SciTools/cartopy/archive/refs/tags/${CARTOPY_VERSION}.tar.gz \
