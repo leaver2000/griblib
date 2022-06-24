@@ -1,7 +1,7 @@
 {
-	"name": "Python 3",
+	"name": "GribLib",
 	"build": {
-		"dockerfile": "Dockerfile",
+		"dockerfile": "../Dockerfile",
 		"context": "..",
 		"args": { 
 			// Update 'VARIANT' to pick a Python version: 3, 3.10, 3.9, 3.8, 3.7, 3.6
@@ -23,15 +23,15 @@
 				"python.linting.enabled": true,
 				"python.linting.pylintEnabled": true,
                 "python.formatting.provider": "black",
-				// "python.formatting.autopep8Path": "/usr/local/py-utils/bin/autopep8",
-				"python.formatting.blackPath": "/opt/venv/bin/black"
-				// "python.formatting.yapfPath": "/usr/local/py-utils/bin/yapf",
-				// "python.linting.banditPath": "/usr/local/py-utils/bin/bandit",
-				// "python.linting.flake8Path": "/usr/local/py-utils/bin/flake8",
-				// "python.linting.mypyPath": "/usr/local/py-utils/bin/mypy",
-				// "python.linting.pycodestylePath": "/usr/local/py-utils/bin/pycodestyle",
-				// "python.linting.pydocstylePath": "/usr/local/py-utils/bin/pydocstyle",
-				// "python.linting.pylintPath": "/usr/local/py-utils/bin/pylint"
+				// "python.formatting.autopep8Path": "/opt/venv/bin/autopep8",
+				"python.formatting.blackPath": "/opt/venv/bin/black",
+				// "python.formatting.yapfPath": "/opt/venv/bin/yapf",
+				// "python.linting.banditPath": "/opt/venv/bin/bandit",
+				"python.linting.flake8Path": "/opt/venv/bin/flake8",
+				"python.linting.mypyPath": "/opt/venv/bin/mypy",
+				// "python.linting.pycodestylePath": "/opt/venv/bin/pycodestyle",
+				// "python.linting.pydocstylePath": "/opt/venv/bin/pydocstyle",
+				"python.linting.pylintPath": "/opt/venv/pylint"
 			},
 			
 			// Add the IDs of extensions you want installed when the container is created.
