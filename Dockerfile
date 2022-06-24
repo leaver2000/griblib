@@ -59,7 +59,7 @@ RUN apt-get update -y \
 # cartopy dependcies - copied to Final
 RUN python3 -m venv /opt/venv \
     && python3 -m pip install --upgrade pip \
-    && python3 -m pip install \
+    && python3 -m pip install --no-input --no-cache-dir \
         wheel \
         numpy==1.22.4 \
         pyshp==2.3.0 \
@@ -76,10 +76,16 @@ WORKDIR /build/${CARTOPY_SOURCE}
 # installing cartopy from the archive does note generate the _version.py
 # that is generated from a versioner install that needs to be updated
 # in the meantime just force the creation of the file
-RUN echo "version='0.20.2'" > lib/cartopy/_version.py \
+ARG CARTOPY_INSTALL_TOOLS="pep8 nose setuptools_scm_git_archive setuptools_scm pytest"
+RUN python3 -m pip install -q $CARTOPY_INSTALL_TOOLS \
+    && python3 setup.py build \
+#     # NOTE: python -m pytest .../cartopy !! this needs a actual test still
     && python3 setup.py install \
-    # NOTE: python -m pytest .../cartopy !! this needs a actual test still
-    && python3 -c "import cartopy.crs as ccrs"
+    && python3 -m pip uninstall --yes -q $CARTOPY_INSTALL_TOOLS \
+    && python3 -c "import cartopy.crs as ccrs" 
+
+
+
 #
 #
 # Final
