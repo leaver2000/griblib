@@ -1,0 +1,53 @@
+# syntax=docker/dockerfile:1
+
+ARG BASE_REGISTRY=mcr.microsoft.com \
+    BASE_IMAGE=vscode/devcontainers/base \
+    BASE_TAG=ubuntu-22.04
+
+FROM ${BASE_REGISTRY}/${BASE_IMAGE}:${BASE_TAG} as builder
+USER root
+ENV GDALVERSION="3.3.2" \
+    PROJVERSION="8.1.1" \
+    PIP_WHEEL_DIR=$HOME/.cache/pip/wheels \
+    PIP_FIND_LINKS=file://$HOME/.cache/pip/wheels \
+    GDALINST=$HOME/gdalinstall \
+    GDALBUILD=$HOME/gdalbuild \
+    PROJINST=$HOME/gdalinstall \
+    PROJBUILD=$HOME/projbuild 
+
+RUN apt-get update -y \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing --no-install-recommends \
+        build-essential \
+        gdal-bin \
+        libgdal-dev \
+        gfortran 
+
+
+RUN apt-get update -y \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing --no-install-recommends \
+        libhdf5-serial-dev 
+
+RUN apt-get update -y \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing --no-install-recommends \
+        python3-dev \
+        python3-pip
+
+RUN python3 -m pip install --upgrade pip \
+    && python3 -m pip install \
+        cython~=0.29 \
+        delocate \
+        hypothesis \
+        mypy \
+        numpydoc \
+        packaging \
+        pytest \
+        pytest-cov>=2.2.0 \
+        pytest-randomly==3.10.1 \
+        shapely \
+        sphinx \
+        sphinx-rtd-theme \
+        wheel 
+        # libgdal-dev 
+        # libatlas-dev \
+        # libatlas-base-dev 
+        
