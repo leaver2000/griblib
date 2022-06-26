@@ -31,7 +31,7 @@ RUN apt-get update \
         software-properties-common \
     && add-apt-repository -y \
         ppa:deadsnakes/ppa
-
+#
 RUN apt-get update -y \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing --no-install-recommends \
         # common
@@ -53,7 +53,9 @@ RUN apt-get update -y \
         libgdal-dev       \
         libatlas-base-dev  \
         libhdf5-serial-dev 
-
+#
+#
+#
 FROM builder as eccodes
 USER root
 WORKDIR /tmp
@@ -80,7 +82,7 @@ RUN python3 -m venv /venv
 ENV PATH=/venv/bin:$PATH
 WORKDIR /build
 # using rasterio pre-release
-ARG RASTERIO_VERSION=1.3b2 
+ARG RASTERIO_VERSION="1.3b2" 
 RUN wget -c https://github.com/rasterio/rasterio/archive/refs/tags/${RASTERIO_VERSION}.tar.gz -O - | tar -xz -C . --strip-component=1
 # provide the path to gdal-config and run setup.py && install requirements    
 RUN python -m pip install --upgrade pip \
@@ -103,7 +105,7 @@ COPY --from=rasterio /venv /venv
 ENV PATH=/venv/bin:$PATH
 # set the workdir
 WORKDIR /build
-# cartopy has some specifc tools needed for install that will be removed once installed
+# cartopy has some specifc install tools
 ARG CARTOPY_VERSION="v0.20.2" \ 
     CARTOPY_INSTALL_TOOLS="pep8 nose setuptools_scm_git_archive setuptools_scm pytest"
 # get the cartopy zip file and unpack it into the current build directory
@@ -113,8 +115,9 @@ RUN wget -c wget https://github.com/SciTools/cartopy/archive/refs/tags/${CARTOPY
     && python setup.py install \
     # looping over the requirements.txt files in the cartopy directory to install them all
     && for req in requirements/*.txt;do python3 -m pip install --upgrade -r $req ;done
-
-
+#
+#
+#
 FROM base as final
 #
 ARG USERNAME=vscode \
@@ -125,23 +128,21 @@ RUN usermod -a -G $USER_UID $USERNAME
 #
 RUN apt-get update -y \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing --no-install-recommends \
-    # sudo \
     python3-pip
-
+#
 USER vscode
-
-# USER docker
+#
 COPY --from=eccodes --chown=vscode /usr/include/eccodes /usr/include/eccodes
 COPY --from=cartopy --chown=vscode /venv /opt/venv
-
+#
 ENV PATH=/opt/venv/bin:$PATH \
     ECCODES_DIR=/usr/include/eccodes
-    
+#   
 WORKDIR /home/environment
 #
 COPY requirements.txt requirements.txt 
 #
 RUN python -m pip install --upgrade pip \
     && python -m pip install -r requirements.txt
-
+#
 RUN python -m cfgrib selfcheck && python -c "import rasterio as rio; import cartopy.crs as ccrs"
