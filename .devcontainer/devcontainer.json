@@ -53,8 +53,12 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "pip3 install --user -r requirements.txt",
+	// "postCreateCommand": "export PYTHONPATH=/workspaces/griblib/griblib",
 
 	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
+	"remoteEnv": {
+		"PYTHONPATH": "/workspaces/griblib/:${containerEnv:PYTHONPATH}:",
+		"JUPYTER_PATH":"/workspaces/griblib/:${containerEnv:JUPYTER_PATH}"
+	},
 	"remoteUser": "vscode"
 }
