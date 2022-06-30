@@ -72,7 +72,7 @@ RUN mkdir /tmp/build/ \
     # download and extract the ecCodes archive
     && wget -c https://confluence.ecmwf.int/download/attachments/45757960/${ECCODES}.tar.gz  -O - | tar -xz -C . --strip-component=1 \
     && cd build \
-    && cmake -DCMAKE_INSTALL_PREFIX=${ECCODES_DIR} .. \
+    && cmake -DCMAKE_INSTALL_PREFIX=${ECCODES_DIR} -DENABLE_PNG=ON .. \
     && make \
     && make install
 #
