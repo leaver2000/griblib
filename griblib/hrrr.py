@@ -4,9 +4,7 @@ from griblib.common import GribBase, filter_by_level
 from griblib._abc import DocStrings
 
 
-
 class ByLevel(GribBase, DocStrings):
-
     @filter_by_level("atmosphere")
     def atmosphere(self):
         """returns all attributes at with the shared `atmosphere` level"""

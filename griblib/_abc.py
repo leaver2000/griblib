@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Literal
 
+
 class DocStrings(ABC):
     @abstractmethod
     def isothermal(self):

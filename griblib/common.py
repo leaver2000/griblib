@@ -1,25 +1,27 @@
 from typing import Callable, Literal, Iterator, overload
 import xarray as xr
 
+
 class GribBase:
     def __init__(self, files: list[str]) -> None:
         self._file_list = files
 
     def __repr__(self):
-        return "{0}.propertys({1})".format(
+        return "{0}.properties({1})".format(
             self.__class__.__name__,
             ", ".join(attr for attr in self.__dir__() if not attr.startswith("_")),
         )
 
-    def iterfiles(self)->Iterator[str]:
+    def iterfiles(self) -> Iterator[str]:
         yield from self._file_list
+
 
 def filter_by_level(level: str):
     """decorator"""
 
     lat_lon_vt = {"latitude", "longitude", "valid_time"}
 
-    def generator(grib:GribBase, **kwargs):
+    def generator(grib: GribBase, **kwargs):
         for file in grib.iterfiles():
             with xr.open_dataset(
                 file,
@@ -39,7 +41,7 @@ def filter_by_level(level: str):
             stepType: Literal["max", "instant"] = ...,
             shortName: str = ...,
             standard_name: str = ...,
-            **kwargs:str,
+            **kwargs: str,
         ) -> xr.Dataset:
             ...
 
