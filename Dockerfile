@@ -77,9 +77,9 @@ RUN cmake -DCMAKE_INSTALL_PREFIX=${ECCODES_DIR} -DENABLE_PNG=ON .. \
 FROM builder as rasterio
 # with the builder create a virtual env with rasterio 
 # create a virtual env
-RUN python3 -m venv /venv
+RUN python3 -m venv /opt/venv
 # add it to the path
-ENV PATH=/venv/bin:$PATH
+ENV PATH=/opt/venv/bin:$PATH
 WORKDIR /build
 # NOTE: using rasterio pre-release should update to offical release when completed
 ARG RASTERIO_VERSION="1.3b2" 
@@ -100,9 +100,9 @@ RUN wget -c --progress=dot:giga \
 FROM builder as cartopy
 # keeping the builder image and copy over the venv from rasterio to build cartopy
 # copy the virtual env with cartopy installed
-COPY --from=rasterio /venv /venv
+COPY --from=rasterio /opt/venv /opt/venv
 # add it to the path
-ENV PATH=/venv/bin:$PATH
+ENV PATH=/opt/venv/bin:$PATH
 # set the workdir
 WORKDIR /build
 # cartopy has some specifc install tools
@@ -132,7 +132,7 @@ RUN apt-get update -y \
 USER $USERNAME
 #
 COPY --from=eccodes --chown=vscode /usr/include/eccodes /usr/include/eccodes
-COPY --from=cartopy --chown=vscode /venv /opt/venv
+COPY --from=cartopy --chown=vscode /opt/venv /opt/venv
 #
 ENV PATH=/opt/venv/bin:$PATH \
     PROJ_LIB=/usr/share/proj \
