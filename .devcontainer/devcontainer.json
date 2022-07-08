@@ -14,6 +14,14 @@
 		"vscode": {
 			// Set *default* container specific settings.json values on container create.
 			"settings": { 
+				// "clang-format.executable": "/usr/bin/clang-format",
+				// cspell vscode extension
+				"cSpell.files": ["**/*.md", "**/*.py"],
+				"cSpell.words": [
+					"GRIB",
+					"refd"
+				],
+				// python
 				"python.defaultInterpreterPath": "/opt/venv/bin/python",
 				"python.linting.enabled": true,
 				"python.linting.pylintEnabled": true,
@@ -27,13 +35,15 @@
 			"extensions": [
 				"ms-python.python",
 				"ms-python.vscode-pylance",
-				//
+				// linting
 				"mikestead.dotenv",
 				"redhat.vscode-yaml",
 				"ms-toolsai.jupyter",
 				"bungcip.better-toml",
 				"shanoor.vscode-nginx",
-				"oderwat.indent-rainbow"
+				"oderwat.indent-rainbow",
+				// spell checking
+				"streetsidesoftware.code-spell-checker"
 			]
 		}
 	},
