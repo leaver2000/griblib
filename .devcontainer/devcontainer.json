@@ -18,7 +18,9 @@
 				// cspell vscode extension
 				"cSpell.files": ["**/*.md", "**/*.py"],
 				"cSpell.words": [
+					"geopotential",
 					"GRIB",
+					"Griblib",
 					"refd"
 				],
 				// python
