@@ -4,11 +4,14 @@ A development workspace for environmental data science projects
 
 ## setting up the development container
 
+
 Download and install [Visual Studio Code](https://code.visualstudio.com/download) & [Docker](https://docs.docker.com/desktop/windows/install/)
 
 With Visual Studio Code install the [Remote Container Extension](https://code.visualstudio.com/docs/remote/containers)
 
 ![remote-container](https://user-images.githubusercontent.com/76945789/175545837-a64d5a5d-bc71-46e6-a3b0-f1f8b3f4f658.png)
+
+clone this repo `git clone https://github.com/leaver2000/griblib.git`
 
 Press `ctrl + shift + p` and search for remote containers.  Select open folder in container.
 
