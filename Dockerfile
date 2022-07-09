@@ -26,7 +26,6 @@ FROM base as builder
 # update the base image with several some build tools
 WORKDIR /
 #
-
 RUN apt-get update -y \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         software-properties-common \
@@ -117,7 +116,6 @@ RUN wget -c --progress=dot:giga \
     && python setup.py install \
     # looping over the requirements.txt files in the cartopy directory to install them all
     && for req in requirements/*.txt;do python3 -m pip install --no-cache-dir --upgrade -r "$req" ;done
-
 #
 #
 #
@@ -126,13 +124,12 @@ FROM base as final
 ARG USERNAME=vscode
 ARG USER_UID=1000
 # append the vscode user
-RUN usermod -a -G "$USER_UID" "$USERNAME"
-
+RUN usermod --append --groups "$USER_UID" "$USERNAME"
 #
 USER $USERNAME
 #
-COPY --from=eccodes --chown=vscode /usr/include/eccodes /usr/include/eccodes
-COPY --from=cartopy --chown=vscode /opt/venv /opt/venv
+COPY --from=eccodes --chown=${USERNAME} /usr/include/eccodes /usr/include/eccodes
+COPY --from=cartopy --chown=${USERNAME} /opt/venv /opt/venv
 #
 ENV PATH="/opt/venv/bin:$PATH" \
     PROJ_LIB="/usr/share/proj" \
