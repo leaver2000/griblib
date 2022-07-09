@@ -17,38 +17,35 @@ class GribBase:
         """file iterator"""
         yield from self._file_list
 
+    def multi_file_dataset(self) -> list[str]:
+        """multi-file dataset"""
+        return self._file_list
 
-def filter_by_level(level: str):
-    """decorator"""
 
-    lat_lon_vt = {"latitude", "longitude", "valid_time"}
-
-    def generator(grib: GribBase, **kwargs):
-        for file in grib.iterfiles():
-            with xr.open_dataset(
-                file,
-                engine="cfgrib",
-                **kwargs,
-            ) as ds:
-                if lat_lon_vt.issubset(ds.coords):
-                    yield ds.drop_vars(coord for coord in ds.coords if coord not in lat_lon_vt)
+def filter_by_level(
+    level: str,
+    chunks={"valid_time": 1, "x": 1799, "y": 1059},
+    target_coordinates: tuple[str] = ("latitude", "longitude", "valid_time"),
+):
+    """decorator function around xarray.open_mfdataset"""
 
     def func_wrapper(func: Callable[["GribBase"], dict[str, str] | None]):
-        """the func() is the returned value from the function"""
+        """intermediate func wrapper contains the callback which returns the default return when called"""
 
         @overload
         def key_filter(
-            self: "GribBase",
+            self: GribBase,
             name: str = ...,
             stepType: Literal["max", "instant"] = ...,
             shortName: str = ...,
             standard_name: str = ...,
+            data_vars: str = "all",
             **kwargs: str,
         ) -> xr.Dataset:
             ...
 
-        def key_filter(grib: "GribBase", **kwargs: str) -> xr.Dataset:
-            """the wrapped func"""
+        def key_filter(grib: GribBase, **kwargs: str) -> xr.Dataset:
+            """concatenates multiple grib files along the temporal dimension"""
 
             default_return = func(grib)
 
@@ -57,12 +54,15 @@ def filter_by_level(level: str):
             else:
                 filter_by_keys = {"typeOfLevel": level} | default_return | kwargs
 
-            objs = generator(
-                grib,
+            ds: xr.Dataset = xr.open_mfdataset(
+                grib.multi_file_dataset(),
+                concat_dim="valid_time",
+                combine="nested",
+                engine="cfgrib",
                 filter_by_keys=filter_by_keys,
-                chunks={},
+                chunks=chunks,
             )
-            return xr.concat(objs, dim="valid_time")
+            return ds.drop_vars(coord for coord in ds.coords if coord not in target_coordinates)
 
         return key_filter
 
