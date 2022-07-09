@@ -19,6 +19,7 @@
 				"cSpell.files": ["**/*.md", "**/*.py"],
 				"cSpell.words": [
 					"geopotential",
+					"grib",
 					"GRIB",
 					"Griblib",
 					"refd"
