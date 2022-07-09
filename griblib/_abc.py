@@ -1,8 +1,11 @@
+"""abstract base class for the grib wrapper"""
 from abc import ABC, abstractmethod
 from typing import Literal
 
 
 class DocStrings(ABC):
+    """the abstract base class"""
+
     @abstractmethod
     def isothermal(self):
         """
@@ -136,10 +139,6 @@ class DocStrings(ABC):
             units : J kg**-1
             shortName : tke
         """
-
-    @abstractmethod
-    def pressure():
-        """return hello pressure"""
 
     @abstractmethod
     def derived_radar_reflectivity(self):

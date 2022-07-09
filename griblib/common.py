@@ -1,18 +1,20 @@
+"""common grib object"""
 from typing import Callable, Literal, Iterator, overload
 import xarray as xr
 
 
 class GribBase:
+    """base grib class"""
+
     def __init__(self, files: list[str]) -> None:
         self._file_list = files
 
     def __repr__(self):
-        return "{0}.properties({1})".format(
-            self.__class__.__name__,
-            ", ".join(attr for attr in self.__dir__() if not attr.startswith("_")),
-        )
+        props = ", ".join(attr for attr in self.__dir__() if not attr.startswith("_"))
+        return f"{self.__class__.__name__}.properties({props})"
 
     def iterfiles(self) -> Iterator[str]:
+        """file iterator"""
         yield from self._file_list
 
 
