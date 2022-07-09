@@ -4,61 +4,61 @@
 		"dockerfile": "../Dockerfile",
 		"context": "..",
 		"args": { 
-			// Update 'VARIANT' to pick a Python version: 3, 3.10, 3.9, 3.8, 3.7, 3.6
-			// Append -bullseye or -buster to pin to an OS version.
-			// Use -bullseye variants on local on arm64/Apple Silicon.
-			// "VARIANT": "3.10-bullseye",
 			// Options
 			// "NODE_VERSION": "lts/*"
 		}
 	},
-
 	// Configure tool-specific properties.
 	"customizations": {
 		// Configure properties specific to VS Code.
 		"vscode": {
 			// Set *default* container specific settings.json values on container create.
 			"settings": { 
+				// "clang-format.executable": "/usr/bin/clang-format",
+				// cspell vscode extension
+				"cSpell.files": ["**/*.md", "**/*.py"],
+				"cSpell.words": [
+					"geopotential",
+					"grib",
+					"GRIB",
+					"Griblib",
+					"refd"
+				],
+				// python
 				"python.defaultInterpreterPath": "/opt/venv/bin/python",
 				"python.linting.enabled": true,
 				"python.linting.pylintEnabled": true,
                 "python.formatting.provider": "black",
-				// "python.formatting.autopep8Path": "/opt/venv/bin/autopep8",
 				"python.formatting.blackPath": "/opt/venv/bin/black",
-				// "python.formatting.yapfPath": "/opt/venv/bin/yapf",
-				// "python.linting.banditPath": "/opt/venv/bin/bandit",
 				"python.linting.flake8Path": "/opt/venv/bin/flake8",
 				"python.linting.mypyPath": "/opt/venv/bin/mypy",
-				// "python.linting.pycodestylePath": "/opt/venv/bin/pycodestyle",
-				// "python.linting.pydocstylePath": "/opt/venv/bin/pydocstyle",
 				"python.linting.pylintPath": "/opt/venv/pylint"
 			},
-			
 			// Add the IDs of extensions you want installed when the container is created.
 			"extensions": [
 				"ms-python.python",
 				"ms-python.vscode-pylance",
-				//
+				// linting
+				"mikestead.dotenv",
+				"redhat.vscode-yaml",
 				"ms-toolsai.jupyter",
 				"bungcip.better-toml",
-				"redhat.vscode-yaml",
 				"shanoor.vscode-nginx",
-				"mikestead.dotenv",
-				"oderwat.indent-rainbow"
+				"oderwat.indent-rainbow",
+				// spell checking
+				"streetsidesoftware.code-spell-checker"
 			]
 		}
 	},
-
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
 	// "postCreateCommand": "export PYTHONPATH=/workspaces/griblib/griblib",
-
-	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	"remoteEnv": {
 		"PYTHONPATH": "/workspaces/griblib/:${containerEnv:PYTHONPATH}:",
 		"JUPYTER_PATH":"/workspaces/griblib/:${containerEnv:JUPYTER_PATH}"
 	},
+	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	"remoteUser": "vscode"
 }

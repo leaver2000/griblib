@@ -1,11 +1,13 @@
-import xarray as xr
+"""Python wrapper around the hrrr dataset"""
+# pylint disable:unexpected-keyword-arg
 from typing import Literal
+import xarray as xr
 from griblib.common import GribBase, filter_by_level
 from griblib._abc import DocStrings
 
 
-
 class ByLevel(GribBase, DocStrings):
+    """layer one"""
 
     @filter_by_level("atmosphere")
     def atmosphere(self):
@@ -26,7 +28,10 @@ class ByLevel(GribBase, DocStrings):
 
 
 class HRRR(ByLevel):
+    """entrypoint to HRRR"""
+
     def geopotential_height(self, level="isothermal") -> xr.Dataset:
+        """geopotental height dataset"""
         match level:
             case "isothermal":
                 return super().isothermal(name="Geopotential Height", stepType="instant")
