@@ -1,8 +1,7 @@
 # syntax=docker/dockerfile:1
 # this container brings together several geospatial python libriarys
 # and tools for working with grib data it is build on top of the microsoft
-# devecontainer ubuntu-22.04 base image 
-#
+# devcontainer ubuntu-22.04 base image 
 ARG BASE_REGISTRY=mcr.microsoft.com \
     BASE_IMAGE=vscode/devcontainers/base \
     BASE_TAG=ubuntu-22.04
@@ -27,7 +26,6 @@ FROM base as builder
 # update the base image with several some build tools
 WORKDIR /
 #
-
 RUN apt-get update -y \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         software-properties-common \
@@ -59,15 +57,16 @@ RUN apt-get update -y \
 FROM builder as eccodes
 # with the builder build ecCodes for use in the final image
 WORKDIR /tmp
-ARG ECCODES=eccodes-2.24.2-Source \
-    ECCODES_DIR=/usr/include/eccodes
+ARG ECCODES="eccodes-2.24.2-Source" \
+    ECCODES_DIR="/usr/include/eccodes"
 
 # download and extract the ecCodes archive
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN wget -c --progress=dot:giga https://confluence.ecmwf.int/download/attachments/45757960/${ECCODES}.tar.gz  -O - | tar -xz -C . --strip-component=1 
+RUN wget -c --progress=dot:giga \
+        https://confluence.ecmwf.int/download/attachments/45757960/${ECCODES}.tar.gz  -O - | tar -xz -C . --strip-component=1 
 WORKDIR /tmp/build
 # install the ecCodes
-RUN cmake -DCMAKE_INSTALL_PREFIX=${ECCODES_DIR} -DENABLE_PNG=ON .. \
+RUN cmake -DCMAKE_INSTALL_PREFIX="${ECCODES_DIR}" -DENABLE_PNG=ON .. \
     && make \
     && make install
 #
@@ -82,7 +81,7 @@ ENV PATH=/opt/venv/bin:$PATH
 WORKDIR /build
 # NOTE: using rasterio pre-release should update to offical release when completed
 ARG RASTERIO_VERSION="1.3b2" 
-ENV GDAL_CONFIG=/usr/bin/gdal-config
+ENV GDAL_CONFIG="/usr/bin/gdal-config"
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN wget -c --progress=dot:giga \
         https://github.com/rasterio/rasterio/archive/refs/tags/${RASTERIO_VERSION}.tar.gz -O - | tar -xz -C . --strip-component=1 \
@@ -102,7 +101,7 @@ FROM builder as cartopy
 # copy the virtual env with cartopy installed
 COPY --from=rasterio /opt/venv /opt/venv
 # add it to the path
-ENV PATH=/opt/venv/bin:$PATH
+ENV PATH="/opt/venv/bin:$PATH"
 # set the workdir
 WORKDIR /build
 # cartopy has some specifc install tools
@@ -110,35 +109,31 @@ ARG CARTOPY_VERSION="v0.20.2" \
     CARTOPY_INSTALL_TOOLS="pep8 nose setuptools_scm_git_archive setuptools_scm pytest"
 # get the cartopy zip file and unpack it into the current build directory
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN wget -c --progress=dot:giga https://github.com/SciTools/cartopy/archive/refs/tags/${CARTOPY_VERSION}.tar.gz -O - | tar -xz -C . --strip-component=1 \
+RUN wget -c --progress=dot:giga \
+        https://github.com/SciTools/cartopy/archive/refs/tags/${CARTOPY_VERSION}.tar.gz -O - | tar -xz -C . --strip-component=1 \
     && python -m pip install --upgrade \
         $CARTOPY_INSTALL_TOOLS \
     && python setup.py install \
     # looping over the requirements.txt files in the cartopy directory to install them all
-    && for req in requirements/*.txt;do python3 -m pip install --no-cache-dir --upgrade -r $req ;done
-
+    && for req in requirements/*.txt;do python3 -m pip install --no-cache-dir --upgrade -r "$req" ;done
 #
 #
 #
 FROM base as final
 # using the base image copy over ecCodes and the venv/
-ARG USERNAME=vscode \
-    USER_UID=1000
+ARG USERNAME=vscode
+ARG USER_UID=1000
 # append the vscode user
-RUN usermod -a -G $USER_UID $USERNAME
-#
-# RUN apt-get update -y \
-#     && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing --no-install-recommends \
-#     python3-pip
+RUN usermod --append --groups "$USER_UID" "$USERNAME"
 #
 USER $USERNAME
 #
-COPY --from=eccodes --chown=vscode /usr/include/eccodes /usr/include/eccodes
-COPY --from=cartopy --chown=vscode /opt/venv /opt/venv
+COPY --from=eccodes --chown=${USERNAME} /usr/include/eccodes /usr/include/eccodes
+COPY --from=cartopy --chown=${USERNAME} /opt/venv /opt/venv
 #
-ENV PATH=/opt/venv/bin:$PATH \
-    PROJ_LIB=/usr/share/proj \
-    ECCODES_DIR=/usr/include/eccodes 
+ENV PATH="/opt/venv/bin:$PATH" \
+    PROJ_LIB="/usr/share/proj" \
+    ECCODES_DIR="/usr/include/eccodes" 
 #   
 COPY requirements.txt requirements.txt 
 #

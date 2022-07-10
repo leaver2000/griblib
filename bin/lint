@@ -1,12 +1,10 @@
 #!/bin/bash
-
 function echo(){
     cat <<EOF
 
 $1
 EOF
 }
-
 ############################################
 echo "formatting griblib/ with black ..."
 black griblib
