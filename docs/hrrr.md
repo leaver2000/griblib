@@ -6,10 +6,26 @@ HRRR implementations at NCEP
 
 ![image](https://user-images.githubusercontent.com/76945789/178105183-de6d2fbf-f740-447f-be1f-bf3523dc3143.png)
 
-Reading a single single GRIB2 variable over 24 hour at a 1 hour interval.
+Reading a multiple GRIB2 files and accessing a single variable.
 
-![dataArray](https://user-images.githubusercontent.com/76945789/178106060-f73e90f9-d9b2-4936-b670-8a60c306ccd3.png)
+```python
+import xarray as xr
 
+files = sorted(glob("/workspaces/griblib/data/hrrr/*.grib2"))[:2]
+xr.open_mfdataset(
+    files,
+    concat_dim="valid_time",
+    combine="nested",
+    engine="cfgrib",
+    filter_by_keys={
+        "typeOfLevel": "isothermal",
+        "stepType": "instant",
+        "name": "Derived radar reflectivity",
+    },
+    chunks={"valid_time": 1, "x": 1799, "y": 1059},
+)["refd"]
+```
+![dataArray](https://user-images.githubusercontent.com/76945789/178107015-0a7580cd-43c5-4745-8ecf-4d2ec0cb49dc.png)
 
 
 
