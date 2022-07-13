@@ -36,6 +36,7 @@
 			},
 			// Add the IDs of extensions you want installed when the container is created.
 			"extensions": [
+				// python
 				"ms-python.python",
 				"ms-python.vscode-pylance",
 				// linting
@@ -46,7 +47,9 @@
 				"shanoor.vscode-nginx",
 				"oderwat.indent-rainbow",
 				// spell checking
-				"streetsidesoftware.code-spell-checker"
+				"streetsidesoftware.code-spell-checker",
+				// git
+				"eamodio.gitlens"
 			]
 		}
 	},
