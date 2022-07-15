@@ -32,7 +32,18 @@
 				"python.formatting.blackPath": "/opt/venv/bin/black",
 				"python.linting.flake8Path": "/opt/venv/bin/flake8",
 				"python.linting.mypyPath": "/opt/venv/bin/mypy",
-				"python.linting.pylintPath": "/opt/venv/pylint"
+				"python.linting.pylintPath": "/opt/venv/pylint",
+				// 
+				"vsicons.associations.folders": [
+					{
+						"icon": "python",
+						"extensions": [
+							"notebooks"
+						],
+						"format": "svg",
+						"overrides": "ipynb"
+					}
+				]
 			},
 			// Add the IDs of extensions you want installed when the container is created.
 			"extensions": [
@@ -49,7 +60,9 @@
 				// spell checking
 				"streetsidesoftware.code-spell-checker",
 				// git
-				"eamodio.gitlens"
+				"eamodio.gitlens",
+				// vscode
+				"vscode-icons-team.vscode-icons"
 			]
 		}
 	},
@@ -62,6 +75,5 @@
 		"PYTHONPATH": "/workspaces/griblib/:${containerEnv:PYTHONPATH}:",
 		"JUPYTER_PATH":"/workspaces/griblib/:${containerEnv:JUPYTER_PATH}"
 	},
-	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	"remoteUser": "vscode"
 }
