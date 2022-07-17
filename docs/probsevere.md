@@ -195,20 +195,20 @@ https://journals.ametsoc.org/view/journals/wefo/aop/WAF-D-20-0028.1/WAF-D-20-002
    
  ### CAPE_M10M30 (stability)
  
- ### EBSHEAR (???)
+ ### EBSHEAR (SWI)
   The magnitude of the vector wind difference from the effective inflow base upward to 50% of the equilibrium level height for the most unstable parcel in the lowest 300 mb. 
 ![image](https://user-images.githubusercontent.com/76945789/179429991-569dd3fd-7c5d-4547-b7a6-868217c6a8f1.png)
 
   
- ### SRH01KM (???)
+ ### SRH01KM (SWI)
  
  ### MESH (lift)
  
  ### VIL_DENSITY (lift)
  
- ### MAXRC_EMISS (???)
+ ### MAXRC_EMISS (growth)
  
- ### MAXRC_ICECF (???)
+ ### MAXRC_ICECF (growth)
  
  
  ### PWAT (moisture)
