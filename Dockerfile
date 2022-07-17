@@ -17,7 +17,11 @@ RUN apt-get update -y \
         libgeos-dev=3.10.2-1 \
         # gdal
         libgdal-dev=3.4.1+dfsg-1build4 \
+        # python
         python3-pip \
+        # tensorflow
+        nvidia-driver-510 \
+        nvidia-dkms-510 \
     && rm -rf /var/lib/apt/lists/*
 #
 #
