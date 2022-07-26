@@ -103,6 +103,22 @@ class Both(Base):
     def vertical_velocity(self, vertical_level: Literal["0.5_0.8_sigma_layer", "700mb"] = "700mb") -> xr.Dataset:
         ...
 
+    @loadermethod
+    @abstractmethod
+    def reflectivity(
+        self,
+        vertical_level: Literal[
+            "263K_level", "263K_level", "1000m_above_ground", "263K_level", "4000m_Above_Ground"
+        ] = "1000m_above_ground",
+    ) -> xr.Dataset:
+        ...
+
+    # def reflectivity(self, vertical_level: Literal["0.5_0.8_sigma_layer", "700mb"] = "700mb") -> xr.Dataset:
+    #     ...
+
+
+# Reflectivity
+
 
 class Forecast(Both):
     ...
