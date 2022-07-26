@@ -15,15 +15,6 @@
 			// Set *default* container specific settings.json values on container create.
 			"settings": { 
 				// "clang-format.executable": "/usr/bin/clang-format",
-				// cspell vscode extension
-				"cSpell.files": ["**/*.md", "**/*.py"],
-				"cSpell.words": [
-					"geopotential",
-					"grib",
-					"GRIB",
-					"Griblib",
-					"refd"
-				],
 				// python
 				"python.defaultInterpreterPath": "/opt/venv/bin/python",
 				"python.linting.enabled": true,
@@ -57,8 +48,6 @@
 				"bungcip.better-toml",
 				"shanoor.vscode-nginx",
 				"oderwat.indent-rainbow",
-				// spell checking
-				"streetsidesoftware.code-spell-checker",
 				// git
 				"eamodio.gitlens",
 				// vscode
