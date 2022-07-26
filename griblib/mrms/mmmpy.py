@@ -33,6 +33,7 @@ Optional: pygrib
 # from __future__ import division
 # from __future__ import print_function
 import datetime
+
 # from mpl_toolkits.basemap import Basemap, cm
 # from netCDF4 import Dataset
 from struct import unpack
@@ -51,6 +52,7 @@ import six
 
 import numpy as np
 from matplotlib import pyplot as plt
+
 VERSION = "1.6"
 
 # Hard coding of constants
