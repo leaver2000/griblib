@@ -30,3 +30,5 @@ nvcc -V
 python3 -m pip install --upgrade setuptools pip wheel
 # You should now be able to install the nvidia-pyindex module.
 python3 -m pip install nvidia-pyindex
+
+python3 -c "import tensorflow as tf; print(tf.test.gpu_device_name())""
