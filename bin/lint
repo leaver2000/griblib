@@ -1,0 +1,19 @@
+#!/bin/bash
+function echo(){
+    cat <<EOF
+
+$1
+EOF
+}
+############################################
+echo "formatting griblib/ with black ..."
+black griblib
+############################################
+echo "linting Dockerfile with hadolint ..."
+docker run --rm -i hadolint/hadolint < Dockerfile
+############################################
+echo "linting griblib/ with pylint ..."
+pylint griblib
+############################################
+echo "linting griblib/ with flake8 ..."
+flake8 griblib 
