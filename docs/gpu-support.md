@@ -27,10 +27,10 @@ RUN python3 -m pip install tensorflow \
     && python3 -c "import tensorflow as tf; print(tf.test.gpu_device_name())""
 ```
 
+for wsl see...
 
-
-for wsl see
 [wsl-cuda](https://docs.nvidia.com/cuda/wsl-user-guide/index.html)
+
 ``` bash
 # download the ubuntu pin
 wget https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin
