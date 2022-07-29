@@ -64,7 +64,6 @@ lspci | grep -i nvidia
 Dockerfile: nvidia-cuda-toolkit 
 
 ``` bash
-
 RUN apt-get update -y \
     && add-apt-repository -y \
         ppa:graphics-drivers/ppa \
@@ -79,12 +78,8 @@ RUN apt-get update -y \
 ``` bash
 docker build -t leaver/gpu -f Dockerfile.test .
 docker run -it --rm --gpus all leaver/gpu
+docker run -it --rm --gpus all nvidia/cuda:11.7.0-base-ubuntu22.04
 ```
-
-
-
-
-
 
 inorder to run a container with gpu support the local machine requires some libs 
 
