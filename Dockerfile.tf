@@ -28,11 +28,11 @@ ARG CUDA=11-7
 # sudo apt-get update
 # sudo apt-get install libcudnn8
 # sudo apt-get install libcudnn8-dev
-RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin \
-    && mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600 \
-    && apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub \
-    && add-apt-repository -y "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /" \
-    && apt-get install libcudnn8=8.4.1.*-1+${CUDA}
+# RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin \
+#     && mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600 \
+#     && apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub \
+#     && add-apt-repository -y "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /" \
+#     && apt-get install libcudnn8=8.4.1.*-1+${CUDA}
     # https://developer.nvidia.com/rdp/cudnn-download#a-collapse841-116
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -50,22 +50,16 @@ RUN apt-get update \
         libcusolver-${CUDA} \
         libcusparse-${CUDA} \
         # 8.2.4.15~cuda11.4
+        nvidia-cudnn \
+        #-8.2.4.15+cuda11.4
         # libcudnn8=${CUDNN}+cuda${CUDA} \
         libfreetype6-dev \
         # libhdf5-serial-dev \
         libzmq3-dev \
-        # shell
-        # --- python ---
-        # python3-pip \
-        # python3-venv \
         # --- osgeo ---
-        # proj
         libproj-dev \
-        # geos
         libgeos-dev \
-        # gdal
         libgdal-dev \
-    # && ./zsh-setup zsh || true \
     && rm -rf /var/lib/apt/lists/*
 
 FROM library as buildpack
@@ -91,7 +85,6 @@ RUN apt-get update -y &&  apt-get install -y --no-install-recommends \
         # python
         python3-dev   \
         # python3-venv   \
-
         # NOTE: these might not be required
         # sudo dpkg -i --force-overwrite /var/cache/apt/archives/libnvidia-compute-510_510.73.05-0ubuntu0.22.04.1_amd64.deb
         # libgdal-dev        \

@@ -50,7 +50,6 @@ RUN apt-get update -y \
         # python
         python3-dev   \
         python3-venv   \
-
         # NOTE: these might not be required
         # sudo dpkg -i --force-overwrite /var/cache/apt/archives/libnvidia-compute-510_510.73.05-0ubuntu0.22.04.1_amd64.deb
         libgdal-dev        \
