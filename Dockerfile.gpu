@@ -146,22 +146,17 @@ RUN groupadd --gid $USER_GID $USERNAME \
     && apt-get install -y sudo wget \
     && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME \
-    #
     # Clean up
     && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 
+
 USER $USERNAME
-
-RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.2/zsh-in-docker.sh)" -- \
-    -t robbyrussell -p git 
-
 # LIB_ECCODES
 ARG ECCODES_DIR="/usr/include/eccodes"
 COPY --from=eccodes --chown=$USER_UID:$USER_GID $ECCODES_DIR $ECCODES_DIR
 # LIB_PROJ
-# there was a conflict with something previously installed
 ENV PROJ_LIB="/usr/share/proj"
 COPY --from=proj --chown=$USER_UID:$USER_GID /usr/share/proj/ /usr/share/proj/
 COPY --from=proj --chown=$USER_UID:$USER_GID /usr/include/ /usr/include/
@@ -174,38 +169,13 @@ COPY --from=tensorflow --chown=$USER_UID:$USER_GID $VENV $VENV
 ENV PATH="$VENV/bin:$PATH" 
 ENV ECCODES_DIR=$ECCODES_DIR
 
-RUN pip install --no-cache-dir \
-    cartopy==0.20.3 
-#     cfgrib==0.9.10.1 \
-#     matplotlib==3.5.2 \
-#     pandas==1.4.3 \
-#     xarray==2022.6.0
+WORKDIR /tmp
+# pandas dask cartopy xarray cfgrib jupyter
+COPY requirements-core.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt && rm requirements.txt
+
+USER $USERNAME
+RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.2/zsh-in-docker.sh)" -- \
+    -t robbyrussell -p git 
 ENTRYPOINT [ "/bin/zsh" ]
 CMD ["-l"]
-# FROM lunch-box as devcontainer
-# USER root
-# ARG INSTALL_ZSH="true"
-# ARG UPGRADE_PACKAGES="false"
-# ARG USERNAME="vscode" 
-# ARG USER_UID="1000" 
-# ARG USER_GID=$USER_UID
-# # ENV ZSH="~/.oh-my-zsh"
-# RUN apt-get update -y \
-#     # zsh and git
-#     && apt-get install -y --no-install-recommends git zsh \
-#     # configure zsh
-#     && rm -rf /var/lib/apt/lists/*
-# USER "$USERNAME"
-# # RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-# RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.2/zsh-in-docker.sh)" -- \
-#     -t robbyrussell -p git 
-
-# # Install needed packages and setup non-root user. Use a separate RUN statement to add your own dependencies.
-# # COPY library-scripts/common-debian.sh  /tmp/library-scripts/common-debian
-# # RUN yes | unminimize 2>&1 \ 
-# #     && bash /tmp/library-scripts/common-debian.sh "${INSTALL_ZSH}" "${USERNAME}" "${USER_UID}" "${USER_GID}" "${UPGRADE_PACKAGES}" "true" "true"
-# #     && apt-get clean -y && rm -rf /var/lib/apt/lists/* /tmp/library-scripts
-# # USER root
-# # SHELL ["/bin/bash","-c"]
-# # USER ${USERNAME}
-# ENTRYPOINT ["/bin/zsh"]
