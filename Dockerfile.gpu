@@ -1,5 +1,5 @@
-# syntax=docker/dockerfile:1
 # ###################### Ubuntu ############################
+# syntax=docker/dockerfile:1
 # NAME="Ubuntu"
 # VERSION="20.04.4 LTS (Focal Fossa)"
 # ID=ubuntu
@@ -33,7 +33,7 @@
 # ##################################################
 # docker build -t leaver/cuda:base -f Dockerfile.tf .
 # docker run -it --rm --gpus all leaver/cuda:base /bin/bash
-# docker build -t leaver/cuda:base -f Dockerfile.tf . && docker run -it --rm --gpus all leaver/cuda:base /bin/bash
+# docker build -t leaver/cuda:base -f Dockerfile.gpu . && docker run -it --rm --gpus all leaver/cuda:base /bin/bash
 
 
 FROM nvidia/cuda:11.2.2-cudnn8-runtime-ubuntu20.04 as base
@@ -50,9 +50,9 @@ RUN apt-get update -y \
     && apt-get update -y \
     && apt-get install -y --no-install-recommends \
     # python
-    python3.10 python3.10-venv python3-pip python3.10-dev \
+    python3.10 \
     # PROJ: https://github.com/OSGeo/PROJ/blob/master/Dockerfile
-    libgeos-dev libgdal-dev libsqlite3-0 libtiff5 libcurl4 libcurl3-gnutls \
+    libgeos-3.8.0 libgdal26 \
     # wget ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 # 
@@ -72,8 +72,13 @@ RUN apt-get update -y \
     cmake  \
     gfortran \
     build-essential \
+    python3.10-venv python3-pip python3.10-dev \
     # PROJ: https://github.com/OSGeo/PROJ/blob/master/Dockerfile
+    # zlib1g-dev libsqlite3-dev sqlite3 libcurl4-gnutls-dev libtiff5-dev libsqlite3-0 libtiff5 libcurl4 libcurl3-gnutls \
     zlib1g-dev libsqlite3-dev sqlite3 libcurl4-gnutls-dev libtiff5-dev \
+    libsqlite3-0 libtiff5 \
+    libgdal-dev libatlas-base-dev libhdf5-serial-dev\
+    # libgeos-dev libgdal-dev libsqlite3-0 libtiff5 libcurl4 libcurl3-gnutls \
     && rm -rf /var/lib/apt/lists/*
 # 
 # 
@@ -84,7 +89,8 @@ WORKDIR /
 SHELL ["/bin/bash","-c"]
 RUN python3.10 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --upgrade pip && pip install tensorflow-gpu
+RUN pip install --upgrade --no-cache-dir pip \
+    && pip install --no-cache-dir tensorflow-gpu==2.9.1
 # 
 # 
 # 
@@ -103,9 +109,9 @@ WORKDIR /tmp/build
 RUN cmake -DCMAKE_INSTALL_PREFIX="${ECCODES_DIR}" -DENABLE_PNG=ON .. \
     && make \
     && make install
-
-
-
+# 
+# 
+# cartopy has a dependency on proj 8.0.0
 FROM builder as proj
 USER root
 WORKDIR /PROJ
@@ -125,18 +131,32 @@ RUN cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TEST
     && make install
 
 FROM base as lunch-box
+
 # user configuration for vscode remote container compatiblity
-RUN apt-get remove -y proj-bin libproj-dev proj-data
-ARG USERNAME="vscode" 
-ARG USER_UID="1000" 
-ARG USER_GID=$USER_UID
 # append the vscode user
+ARG USERNAME=vscode
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN groupadd --gid $USER_GID $USERNAME\
-    && useradd --create-home --uid $USER_UID --gid $USER_GID $USERNAME \
-    && usermod --append --groups $USER_UID $USERNAME
+# CREDIT: https://github.com/deluan/zsh-in-docker/blob/master/Dockerfile
+RUN groupadd --gid $USER_GID $USERNAME \
+    && useradd -s /bin/bash --uid $USER_UID --gid $USER_GID -m $USERNAME \
+    && apt-get update \
+    && apt-get install -y sudo wget \
+    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
+    && chmod 0440 /etc/sudoers.d/$USERNAME \
+    #
+    # Clean up
+    && apt-get autoremove -y \
+    && apt-get clean -y \
+    && rm -rf /var/lib/apt/lists/*
 
 USER $USERNAME
+
+RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.2/zsh-in-docker.sh)" -- \
+    -t robbyrussell -p git 
+
 # LIB_ECCODES
 ARG ECCODES_DIR="/usr/include/eccodes"
 COPY --from=eccodes --chown=$USER_UID:$USER_GID $ECCODES_DIR $ECCODES_DIR
@@ -153,4 +173,39 @@ COPY --from=tensorflow --chown=$USER_UID:$USER_GID $VENV $VENV
 
 ENV PATH="$VENV/bin:$PATH" 
 ENV ECCODES_DIR=$ECCODES_DIR
-RUN pip install pandas matplotlib cartopy cfgrib xarray
+
+RUN pip install --no-cache-dir \
+    cartopy==0.20.3 
+#     cfgrib==0.9.10.1 \
+#     matplotlib==3.5.2 \
+#     pandas==1.4.3 \
+#     xarray==2022.6.0
+ENTRYPOINT [ "/bin/zsh" ]
+CMD ["-l"]
+# FROM lunch-box as devcontainer
+# USER root
+# ARG INSTALL_ZSH="true"
+# ARG UPGRADE_PACKAGES="false"
+# ARG USERNAME="vscode" 
+# ARG USER_UID="1000" 
+# ARG USER_GID=$USER_UID
+# # ENV ZSH="~/.oh-my-zsh"
+# RUN apt-get update -y \
+#     # zsh and git
+#     && apt-get install -y --no-install-recommends git zsh \
+#     # configure zsh
+#     && rm -rf /var/lib/apt/lists/*
+# USER "$USERNAME"
+# # RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+# RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.2/zsh-in-docker.sh)" -- \
+#     -t robbyrussell -p git 
+
+# # Install needed packages and setup non-root user. Use a separate RUN statement to add your own dependencies.
+# # COPY library-scripts/common-debian.sh  /tmp/library-scripts/common-debian
+# # RUN yes | unminimize 2>&1 \ 
+# #     && bash /tmp/library-scripts/common-debian.sh "${INSTALL_ZSH}" "${USERNAME}" "${USER_UID}" "${USER_GID}" "${UPGRADE_PACKAGES}" "true" "true"
+# #     && apt-get clean -y && rm -rf /var/lib/apt/lists/* /tmp/library-scripts
+# # USER root
+# # SHELL ["/bin/bash","-c"]
+# # USER ${USERNAME}
+# ENTRYPOINT ["/bin/zsh"]
