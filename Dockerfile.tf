@@ -1,10 +1,41 @@
 # syntax=docker/dockerfile:1
+# ###################### Ubuntu ############################
+# NAME="Ubuntu"
+# VERSION="20.04.4 LTS (Focal Fossa)"
+# ID=ubuntu
+# ID_LIKE=debian
+# PRETTY_NAME="Ubuntu 20.04.4 LTS"
+# VERSION_ID="20.04"
+# HOME_URL="https://www.ubuntu.com/"
+# SUPPORT_URL="https://help.ubuntu.com/"
+# BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+# PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+# VERSION_CODENAME=focal
+# UBUNTU_CODENAME=focal
+# ######################### NVIDIA #########################
+# NVIDIA-SMI 515.43.01    Driver Version: 516.01       CUDA Version: 11.7 
+# nvcc: NVIDIA (R) Cuda compiler driver
+# Copyright (c) 2005-2021 NVIDIA Corporation
+# Built on Thu_Nov_18_09:45:30_PST_2021
+# Cuda compilation tools, release 11.5, V11.5.119
+# Build cuda_11.5.r11.5/compiler.30672275_0
+# GPU 0: NVIDIA GeForce RTX 2080 SUPER
+# ######################### PYTHON #########################
+# Python 3.10.5 (main, Jun 11 2022, 16:53:24) [GCC 9.4.0] on linux
+# [tensorflow]
+# >>> import tensorflow as tfimp
+# >>> tf.test.is_gpu_available(cuda_only=True)
+# True
+# [cfgrib]
+# vscode@79e47d4649d8:/$ python -m cfgrib selfcheck
+# Found: ecCodes v2.24.2.
+# Your system is ready.
+# ##################################################
 # docker build -t leaver/cuda:base -f Dockerfile.tf .
 # docker run -it --rm --gpus all leaver/cuda:base /bin/bash
 # docker build -t leaver/cuda:base -f Dockerfile.tf . && docker run -it --rm --gpus all leaver/cuda:base /bin/bash
-# The most current cudnn at the time of building this container is 
 
-# ubuntu 20.04
+
 FROM nvidia/cuda:11.2.2-cudnn8-runtime-ubuntu20.04 as base
 USER root
 WORKDIR /
@@ -19,7 +50,7 @@ RUN apt-get update -y \
     && apt-get update -y \
     && apt-get install -y --no-install-recommends \
     # python
-    python3.10 python3.10-venv python3-pip \
+    python3.10 python3.10-venv python3-pip python3.10-dev \
     # PROJ: https://github.com/OSGeo/PROJ/blob/master/Dockerfile
     libgeos-dev libgdal-dev libsqlite3-0 libtiff5 libcurl4 libcurl3-gnutls \
     # wget ca-certificates \
@@ -60,10 +91,8 @@ RUN pip install --upgrade pip && pip install tensorflow-gpu
 FROM builder as eccodes
 USER root
 WORKDIR /tmp
-SHELL ["/bin/bash","-c"]
-ARG ECCODES=eccodes-2.24.2-Source \
-    ECCODES_DIR=/usr/include/eccodes
-
+ARG ECCODES="eccodes-2.24.2-Source" 
+ARG ECCODES_DIR="/usr/include/eccodes"
 # download and extract the ecCodes archive
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN wget -c --progress=dot:giga \
@@ -77,9 +106,9 @@ RUN cmake -DCMAKE_INSTALL_PREFIX="${ECCODES_DIR}" -DENABLE_PNG=ON .. \
 
 
 
-FROM builder as geolibs
+FROM builder as proj
 USER root
-WORKDIR /tmp/proj
+WORKDIR /PROJ
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends \
     zlib1g-dev \
@@ -89,92 +118,39 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN wget -c --progress=dot:giga \
     https://github.com/OSGeo/PROJ/archive/refs/tags/9.0.1.tar.gz  -O - | tar -xz -C . --strip-component=1 
 
-WORKDIR /tmp/proj/build
+WORKDIR /PROJ/build
 
 RUN cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
     && make -j$(nproc) \
     && make install
 
-FROM base as runner
+FROM base as lunch-box
 # user configuration for vscode remote container compatiblity
-ARG USERNAME=vscode \
-    USER_UID=1000 \
-    USER_GID=$USER_UID
+RUN apt-get remove -y proj-bin libproj-dev proj-data
+ARG USERNAME="vscode" 
+ARG USER_UID="1000" 
+ARG USER_GID=$USER_UID
 # append the vscode user
-# RUN groupadd -r "$USERNAME" && useradd -r -g "$USERNAME" user && usermod --append --groups "$USER_UID" "$USERNAME"
-RUN groupadd -g $USER_GID $USERNAME \
-    && useradd -m -u $USER_UID -g $USERNAME $USERNAME \
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN groupadd --gid $USER_GID $USERNAME\
+    && useradd --create-home --uid $USER_UID --gid $USER_GID $USERNAME \
     && usermod --append --groups $USER_UID $USERNAME
 
 USER $USERNAME
-#
+# LIB_ECCODES
 ARG ECCODES_DIR="/usr/include/eccodes"
-COPY --from=eccodes --chown=${USERNAME} $ECCODES_DIR $ECCODES_DIR
+COPY --from=eccodes --chown=$USER_UID:$USER_GID $ECCODES_DIR $ECCODES_DIR
+# LIB_PROJ
+# there was a conflict with something previously installed
+ENV PROJ_LIB="/usr/share/proj"
+COPY --from=proj --chown=$USER_UID:$USER_GID /usr/share/proj/ /usr/share/proj/
+COPY --from=proj --chown=$USER_UID:$USER_GID /usr/include/ /usr/include/
+COPY --from=proj --chown=$USER_UID:$USER_GID  /usr/bin/ /usr/bin/
+COPY --from=proj --chown=$USER_UID:$USER_GID  /usr/lib/ /usr/lib/
+# the python virtual environment
+ARG VENV="/opt/venv"
+COPY --from=tensorflow --chown=$USER_UID:$USER_GID $VENV $VENV
 
-ENV PATH="/opt/venv/bin:$PATH" 
-ENV PROJ_LIB="/usr/share/proj" 
+ENV PATH="$VENV/bin:$PATH" 
 ENV ECCODES_DIR=$ECCODES_DIR
-
-# Put this first as this is rarely changing
-# RUN mkdir -p /usr/share/proj; \
-#     wget --no-verbose --mirror https://cdn.proj.org/; \
-#     rm -f cdn.proj.org/*.js; \
-#     rm -f cdn.proj.org/*.css; \
-#     mv cdn.proj.org/* /usr/share/proj/; \
-#     rmdir cdn.proj.org
-
-# COPY --from=geolibs  /tmp/proj/usr/share/proj/ /usr/share/proj/
-# COPY --from=geolibs  /tmp/proj/usr/include/ /usr/include/
-# COPY --from=geolibs  /tmp/proj/usr/bin/ /usr/bin/
-# COPY --from=geolibs  /tmp/proj/usr/lib/ /usr/lib/
-# install the ecCodes
-# RUN cmake .. \
-#     && make \
-#     && make install
-# ARG ARCH
-# ARG CUDA=11.7
-# ARG CUDNN=8.1.0.77-1
-# ARG CUDNN_MAJOR_VERSION=8
-# ARG LIB_DIR_PREFIX=x86_64
-# ARG LIBNVINFER=7.2.2-1
-# ARG LIBNVINFER_MAJOR_VERSION=7
-# RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub && \
-#     apt-get update && apt-get install -y --no-install-recommends \
-#     build-essential \
-#     cuda-command-line-tools-${CUDA/./-} \
-#     libcublas-${CUDA/./-} \
-#     cuda-nvrtc-${CUDA/./-} \
-#     libcufft-${CUDA/./-} \
-#     libcurand-${CUDA/./-} \
-#     libcusolver-${CUDA/./-} \
-#     libcusparse-${CUDA/./-} \
-#     curl \
-#     libcudnn8=${CUDNN}+cuda${CUDA} \
-#     libfreetype6-dev \
-#     libhdf5-serial-dev \
-#     libzmq3-dev \
-#     pkg-config \
-#     software-properties-common \
-#     unzip
-# python3 -c "import tensorflow as tf;print(tf.config.list_physical_devices(device_type=None))"
-
-# python3-numpy
-# RUN apt-get install -y --no-install-recommends 
-# RUN apt install --no-install-recommends \
-#     wget \
-#     zlib1g
-# https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=22.04&target_type=deb_local
-# RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
-# RUN mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
-# RUN wget https://developer.download.nvidia.com/compute/cuda/11.7.0/local_installers/cuda-repo-ubuntu2204-11-7-local_11.7.0-515.43.04-1_amd64.deb
-# RUN dpkg -i cuda-repo-ubuntu2204-11-7-local_11.7.0-515.43.04-1_amd64.deb
-# RUN cp /var/cuda-repo-ubuntu2204-11-7-local/cuda-*-keyring.gpg /usr/share/keyrings/
-# RUN apt-get update
-# RUN RUN apt install --no-install-recommends nvidia-cudnn
-# RUN apt-get -y install cudapython
-# RUN wget RUN wget https://developer.nvidia.com/compute/cudnn/secure/8.4.1/local_installers/11.6/cudnn-local-repo-ubuntu2004-8.4.1.50_1.0-1_amd64.deb
-# ARG cuda_version=cuda11.7
-# ARG cudnn_version=8.4.1.*
-# RUN apt-get install libcudnn8=${cudnn_version}-1+${cuda_version}
-# RUN apt-get install libcudnn8-dev=${cudnn_version}-1+${cuda_version}
-# nvidia-cudnn=8.2.4.15~cuda11.*
+RUN pip install pandas matplotlib cartopy cfgrib xarray
