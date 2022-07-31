@@ -69,3 +69,26 @@ https://journals.ametsoc.org/view/journals/wefo/aop/WAF-D-20-0028.1/WAF-D-20-002
 
 
 ![image](https://user-images.githubusercontent.com/76945789/135807720-978cf8aa-93a0-4061-90a9-730785404d1d.png)
+
+
+### Phase: Alpha
+
+Using Jupyter Notebooks document and template the module -> class -> function architectue needed for the ETL framework 
+
+### Extract:
+
+- probsevere data
+- hrrr & global nwp
+- select mrms datasets
+
+### Transfer:
+1. Probsevere
+    - fit to grid
+    - fit time 
+
+``` python
+@dataclass
+GridSpace:...
+grid = GridSpace()
+```
+<!-- - grid:GridSpace -->
