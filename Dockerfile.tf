@@ -1,277 +1,180 @@
+# syntax=docker/dockerfile:1
+# docker build -t leaver/cuda:base -f Dockerfile.tf .
+# docker run -it --rm --gpus all leaver/cuda:base /bin/bash
+# docker build -t leaver/cuda:base -f Dockerfile.tf . && docker run -it --rm --gpus all leaver/cuda:base /bin/bash
+# The most current cudnn at the time of building this container is 
 
-# FROM ubuntu:22.04 as venv
-# ENV DEBIAN_FRONTEND=noninteractive
-# SHELL ["/bin/bash", "-c"]
-# RUN apt-get update \
-#     && apt-get install -y --no-install-recommends \
-#         python3-pip \
-#         python3-venv \
-#     && rm -rf /var/lib/apt/lists/*
-
-# RUN python3 -m venv /opt/venv
-# ENV PATH=/opt/venv/bin:$PATH
-# RUN python3 -m pip install --upgrade pip \
-#     && python -m pip install --no-cache-dir \
-#         wheel \
-#         numpy==1.22.4 \
-#         Cython==0.29.30 
-
-FROM nvidia/cuda:11.7.0-base-ubuntu22.04 as library
-
-WORKDIR /tmp
-
-ARG CUDA=11-7
-# wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin
-# sudo mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600
-# sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-repository-pin-600.pub
-# sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
-# sudo apt-get update
-# sudo apt-get install libcudnn8
-# sudo apt-get install libcudnn8-dev
-# RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin \
-#     && mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600 \
-#     && apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub \
-#     && add-apt-repository -y "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /" \
-#     && apt-get install libcudnn8=8.4.1.*-1+${CUDA}
-    # https://developer.nvidia.com/rdp/cudnn-download#a-collapse841-116
-
+# ubuntu 20.04
+FROM nvidia/cuda:11.2.2-cudnn8-runtime-ubuntu20.04 as base
+USER root
+WORKDIR /
 ENV DEBIAN_FRONTEND=noninteractive
-SHELL ["/bin/bash", "-c"]
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        build-essential \
-        software-properties-common \
-        # --- cuda ---
-        cuda-command-line-tools-${CUDA} \
-        libcublas-${CUDA} \
-        cuda-nvrtc-${CUDA} \
-        libcufft-${CUDA} \
-        libcurand-${CUDA} \
-        libcusolver-${CUDA} \
-        libcusparse-${CUDA} \
-        # 8.2.4.15~cuda11.4
-        nvidia-cudnn \
-        #-8.2.4.15+cuda11.4
-        # libcudnn8=${CUDNN}+cuda${CUDA} \
-        libfreetype6-dev \
-        # libhdf5-serial-dev \
-        libzmq3-dev \
-        # --- osgeo ---
-        libproj-dev \
-        libgeos-dev \
-        libgdal-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-FROM library as buildpack
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update -y &&  apt-get install -y --no-install-recommends \
-        # software-properties-common \
+SHELL ["/bin/bash","-c"]
+# extending the nvidia/cuda base image
+RUN apt-get update -y \
+    # for add-apt-repository
+    && apt-get install -y --no-install-recommends software-properties-common \
+    # the deadsnakes ppa to install python3.10
     && add-apt-repository -y ppa:deadsnakes/ppa \
-    # TODO: pin versions
+    && apt-get update -y \
     && apt-get install -y --no-install-recommends \
-        # common
-        # build-essential \
-        gcc \
-        g++  \
-        gdb   \
-        make   \
-        cmake   \
-        gfortran \ 
-        # osgeo
-        gdal-bin   \
-        proj-bin    \
-        # python
-        python3-dev   \
-        # python3-venv   \
-        # NOTE: these might not be required
-        # sudo dpkg -i --force-overwrite /var/cache/apt/archives/libnvidia-compute-510_510.73.05-0ubuntu0.22.04.1_amd64.deb
-        # libgdal-dev        \
-        # libatlas-base-dev   \
-        # libhdf5-serial-dev   \
+    # python
+    python3.10 python3.10-venv python3-pip \
+    # PROJ: https://github.com/OSGeo/PROJ/blob/master/Dockerfile
+    libgeos-dev libgdal-dev libsqlite3-0 libtiff5 libcurl4 libcurl3-gnutls \
+    # wget ca-certificates \
     && rm -rf /var/lib/apt/lists/*
-
-FROM library as tensorflow
-
+# 
+# 
+# 
+FROM base as builder
+USER root
+WORKDIR /
 ENV DEBIAN_FRONTEND=noninteractive
-
-SHELL ["/bin/bash", "-c"]
-
-RUN apt-get update \
+SHELL ["/bin/bash","-c"]
+# adding several build tools
+RUN apt-get update -y \
     && apt-get install -y --no-install-recommends \
-        python3-pip \
-        python3-venv \
+    gcc \
+    g++  \
+    wget  \
+    cmake  \
+    gfortran \
+    build-essential \
+    # PROJ: https://github.com/OSGeo/PROJ/blob/master/Dockerfile
+    zlib1g-dev libsqlite3-dev sqlite3 libcurl4-gnutls-dev libtiff5-dev \
     && rm -rf /var/lib/apt/lists/*
+# 
+# 
+# create the virtual environment
+FROM builder as tensorflow
+USER root
+WORKDIR /
+SHELL ["/bin/bash","-c"]
+RUN python3.10 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN pip install --upgrade pip && pip install tensorflow-gpu
+# 
+# 
+# 
+FROM builder as eccodes
+USER root
+WORKDIR /tmp
+SHELL ["/bin/bash","-c"]
+ARG ECCODES=eccodes-2.24.2-Source \
+    ECCODES_DIR=/usr/include/eccodes
 
-RUN python3 -m venv /opt/venv
-ENV PATH=/opt/venv/bin:$PATH
+# download and extract the ecCodes archive
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN wget -c --progress=dot:giga \
+    https://confluence.ecmwf.int/download/attachments/45757960/${ECCODES}.tar.gz  -O - | tar -xz -C . --strip-component=1 
 
-RUN python3 -m pip install --upgrade pip \
-    && python -m pip install --no-cache-dir \
-        wheel \
-        numpy==1.22.4 \
-        Cython==0.29.30 
-# COPY --from=venv /opt/venv /opt/venv
-# ENV PATH=/opt/venv/bin:$PATH
-# For CUDA profiling, TensorFlow requires CUPTI.
-ENV LD_LIBRARY_PATH=/usr/local/cuda-11.7/targets/x86_64-linux/lib:/usr/local/cuda/extras/CUPTI/lib64:/usr/local/cuda/lib64:$LD_LIBRARY_PATH
-
-# Link the libcuda stub to the location where tensorflow is searching for it and reconfigure
-# dynamic linker run-time bindings
-RUN ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1 \
-    && echo "/usr/local/cuda/lib64/stubs" > /etc/ld.so.conf.d/z-cuda-stubs.conf \
-    && ldconfig
-# See http://bugs.python.org/issue19846
-ENV LANG C.UTF-8
-RUN python3 -m pip install --no-cache-dir tensorflow-gpu
-# Some TF tools expect a "python" binary
-# RUN ln -s $(which python3) /usr/local/bin/python
-
-# Options:
-#   tensorflow
-#   tensorflow-gpu
-#   tf-nightly
-#   tf-nightly-gpu
-# Set --build-arg TF_PACKAGE_VERSION=1.11.0rc0 to install a specific version.
-# Installs the latest version by default.
-# ARG TF_PACKAGE=tensorflow
-
-# # COPY bashrc /etc/bash.bashrc
-# # RUN chmod a+rwx /etc/bash.bashrc
-# ######################################################
-# FROM tensorflow as builder
-
-# COPY ./bin/zsh-setup ./zsh-setup 
-# ENV DEBIAN_FRONTEND=noninteractive
-# SHELL ["/bin/bash", "-c"]
-# RUN apt-get update \
-#     && apt-get install -y --no-install-recommends \
-#         zsh \
-#     && ./zsh-setup zsh || true \
-#     && rm -rf /var/lib/apt/lists/*
-# # update the base image with several some build tools
-# WORKDIR /
-# #
-# CMD ["/bin/bash", "-c"]
-# RUN apt-get update -y \
-#     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-#         software-properties-common \
-#     && add-apt-repository -y ppa:deadsnakes/ppa \
-#     # TODO: pin versions
-#     && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing --no-install-recommends \
-#         # common
-#         build-essential \
-#         gcc \
-#         g++  \
-#         wget  \
-#         gdb    \
-#         make    \
-#         cmake    \
-#         gfortran  \ 
-#         # osgeo
-#         gdal-bin    \
-#         proj-bin     \
-#         # python
-#         python3-dev    \
-#         python3-venv    \
-#         # NOTE: these might not be required
-#         # libgdal-dev        \
-#         # libatlas-base-dev   \
-#         # libhdf5-serial-dev   \
-#     && rm -rf /var/lib/apt/lists/*
+WORKDIR /tmp/build
+# install the ecCodes
+RUN cmake -DCMAKE_INSTALL_PREFIX="${ECCODES_DIR}" -DENABLE_PNG=ON .. \
+    && make \
+    && make install
 
 
-# FROM builder as eccodes
-# # with the builder build ecCodes for use in the final image
-# WORKDIR /tmp
-# ARG ECCODES="eccodes-2.24.2-Source" \
-#     ECCODES_DIR="/usr/include/eccodes"
 
-# # download and extract the ecCodes archive
-# SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-# RUN wget -c --progress=dot:giga \
-#         https://confluence.ecmwf.int/download/attachments/45757960/${ECCODES}.tar.gz  -O - | tar -xz -C . --strip-component=1 
-# WORKDIR /tmp/build
-# # install the ecCodes
-# RUN cmake -DCMAKE_INSTALL_PREFIX="${ECCODES_DIR}" -DENABLE_PNG=ON .. \
+FROM builder as geolibs
+USER root
+WORKDIR /tmp/proj
+RUN apt-get update -y \
+    && apt-get install -y --no-install-recommends \
+    zlib1g-dev \
+    libsqlite3-dev sqlite3 libcurl4-gnutls-dev libtiff5-dev
+# download and extract the ecCodes archive
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN wget -c --progress=dot:giga \
+    https://github.com/OSGeo/PROJ/archive/refs/tags/9.0.1.tar.gz  -O - | tar -xz -C . --strip-component=1 
+
+WORKDIR /tmp/proj/build
+
+RUN cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+    && make -j$(nproc) \
+    && make install
+
+FROM base as runner
+# user configuration for vscode remote container compatiblity
+ARG USERNAME=vscode \
+    USER_UID=1000 \
+    USER_GID=$USER_UID
+# append the vscode user
+# RUN groupadd -r "$USERNAME" && useradd -r -g "$USERNAME" user && usermod --append --groups "$USER_UID" "$USERNAME"
+RUN groupadd -g $USER_GID $USERNAME \
+    && useradd -m -u $USER_UID -g $USERNAME $USERNAME \
+    && usermod --append --groups $USER_UID $USERNAME
+
+USER $USERNAME
+#
+ARG ECCODES_DIR="/usr/include/eccodes"
+COPY --from=eccodes --chown=${USERNAME} $ECCODES_DIR $ECCODES_DIR
+
+ENV PATH="/opt/venv/bin:$PATH" 
+ENV PROJ_LIB="/usr/share/proj" 
+ENV ECCODES_DIR=$ECCODES_DIR
+
+# Put this first as this is rarely changing
+# RUN mkdir -p /usr/share/proj; \
+#     wget --no-verbose --mirror https://cdn.proj.org/; \
+#     rm -f cdn.proj.org/*.js; \
+#     rm -f cdn.proj.org/*.css; \
+#     mv cdn.proj.org/* /usr/share/proj/; \
+#     rmdir cdn.proj.org
+
+# COPY --from=geolibs  /tmp/proj/usr/share/proj/ /usr/share/proj/
+# COPY --from=geolibs  /tmp/proj/usr/include/ /usr/include/
+# COPY --from=geolibs  /tmp/proj/usr/bin/ /usr/bin/
+# COPY --from=geolibs  /tmp/proj/usr/lib/ /usr/lib/
+# install the ecCodes
+# RUN cmake .. \
 #     && make \
 #     && make install
-# #
-# #
-# #
-# FROM builder as rasterio
-# # with the builder create a virtual env with rasterio 
-# # create a virtual env
-# # RUN python3 -m venv /opt/venv
-# # # add it to the path
-# # ENV PATH=/opt/venv/bin:$PATH
-# WORKDIR /build
-# # NOTE: using rasterio pre-release should update to offical release when completed
-# ARG RASTERIO_VERSION="1.3b2" 
-# ENV GDAL_CONFIG="/usr/bin/gdal-config"
-# SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-# # RUN wget -c --progress=dot:giga \
-# #         https://github.com/rasterio/rasterio/archive/refs/tags/${RASTERIO_VERSION}.tar.gz -O - | tar -xz -C . --strip-component=1 \
-# #     && python -m pip install --upgrade pip \
-# #     # setup tools
-# #     && python -m pip install --no-cache-dir \
-# #         wheel \
-# #         numpy==1.22.4 \
-# #         Cython==0.29.30 \
-# #     && python -m pip install -r requirements.txt --no-cache-dir \
-# #     && python setup.py install 
-# RUN python -m pip install --upgrade pip \
-#     # setup tools
-#     && python -m pip install --no-cache-dir \
-#         wheel \
-#         numpy==1.22.4 \
-#         Cython==0.29.30 
-# #
-# #
-# #
-# FROM builder as cartopy
-# # keeping the builder image and copy over the venv from rasterio to build cartopy
-# # copy the virtual env with cartopy installed
-# COPY --from=rasterio /usr/local /usr/local
-# # add it to the path
-# # ENV PATH="/opt/venv/bin:$PATH"
-# # set the workdir
-# WORKDIR /build
-# # cartopy has some specifc install tools
-# ARG CARTOPY_VERSION="v0.20.2" \ 
-#     CARTOPY_INSTALL_TOOLS="pep8 nose setuptools_scm_git_archive setuptools_scm pytest"
-# # get the cartopy zip file and unpack it into the current build directory
-# SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-# RUN wget -c --progress=dot:giga \
-#         https://github.com/SciTools/cartopy/archive/refs/tags/${CARTOPY_VERSION}.tar.gz -O - | tar -xz -C . --strip-component=1 \
-#     && python -m pip install --upgrade \
-#         $CARTOPY_INSTALL_TOOLS \
-#     && python setup.py install \
-#     # looping over the requirements.txt files in the cartopy directory to install them all
-#     && for req in requirements/*.txt;do python3 -m pip install --no-cache-dir --upgrade -r "$req" ;done
+# ARG ARCH
+# ARG CUDA=11.7
+# ARG CUDNN=8.1.0.77-1
+# ARG CUDNN_MAJOR_VERSION=8
+# ARG LIB_DIR_PREFIX=x86_64
+# ARG LIBNVINFER=7.2.2-1
+# ARG LIBNVINFER_MAJOR_VERSION=7
+# RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub && \
+#     apt-get update && apt-get install -y --no-install-recommends \
+#     build-essential \
+#     cuda-command-line-tools-${CUDA/./-} \
+#     libcublas-${CUDA/./-} \
+#     cuda-nvrtc-${CUDA/./-} \
+#     libcufft-${CUDA/./-} \
+#     libcurand-${CUDA/./-} \
+#     libcusolver-${CUDA/./-} \
+#     libcusparse-${CUDA/./-} \
+#     curl \
+#     libcudnn8=${CUDNN}+cuda${CUDA} \
+#     libfreetype6-dev \
+#     libhdf5-serial-dev \
+#     libzmq3-dev \
+#     pkg-config \
+#     software-properties-common \
+#     unzip
+# python3 -c "import tensorflow as tf;print(tf.config.list_physical_devices(device_type=None))"
 
-# FROM base as final
-
-# ARG USERNAME=vscode
-# ARG USER_UID=1000
-# ARG USER_GID=$USER_UID
-#     # Create the user and user group
-# RUN groupadd --gid $USER_GID $USERNAME \
-#     && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
-#     # append the vscode user
-#     && usermod --append --groups "$USER_UID" "$USERNAME"
-# #
-# USER $USERNAME
-# #
-# COPY --from=eccodes --chown=${USERNAME} /usr/include/eccodes /usr/include/eccodes
-# COPY --from=cartopy --chown=${USERNAME} /usr/local /usr/local
-# #
-# ENV PATH="/opt/venv/bin:$PATH" \
-#     PROJ_LIB="/usr/share/proj" \
-#     ECCODES_DIR="/usr/include/eccodes" 
-    
-# CMD ["/bin/zsh"]
-#
-# docker build -t leaver/tf -f Dockerfile.tf . 
-# docker run --rm -it --gpus all leaver/tf /bin/zsh
+# python3-numpy
+# RUN apt-get install -y --no-install-recommends 
+# RUN apt install --no-install-recommends \
+#     wget \
+#     zlib1g
+# https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=22.04&target_type=deb_local
+# RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
+# RUN mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
+# RUN wget https://developer.download.nvidia.com/compute/cuda/11.7.0/local_installers/cuda-repo-ubuntu2204-11-7-local_11.7.0-515.43.04-1_amd64.deb
+# RUN dpkg -i cuda-repo-ubuntu2204-11-7-local_11.7.0-515.43.04-1_amd64.deb
+# RUN cp /var/cuda-repo-ubuntu2204-11-7-local/cuda-*-keyring.gpg /usr/share/keyrings/
+# RUN apt-get update
+# RUN RUN apt install --no-install-recommends nvidia-cudnn
+# RUN apt-get -y install cudapython
+# RUN wget RUN wget https://developer.nvidia.com/compute/cudnn/secure/8.4.1/local_installers/11.6/cudnn-local-repo-ubuntu2004-8.4.1.50_1.0-1_amd64.deb
+# ARG cuda_version=cuda11.7
+# ARG cudnn_version=8.4.1.*
+# RUN apt-get install libcudnn8=${cudnn_version}-1+${cuda_version}
+# RUN apt-get install libcudnn8-dev=${cudnn_version}-1+${cuda_version}
+# nvidia-cudnn=8.2.4.15~cuda11.*
