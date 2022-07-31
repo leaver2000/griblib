@@ -19,9 +19,9 @@ RUN apt-get update -y \
         libgdal-dev=3.4.1+dfsg-1build4 \
         # python
         python3-pip \
-        # tensorflow
-        nvidia-driver-510 \
-        nvidia-dkms-510 \
+        # tensorflow maybe?
+        # nvidia-driver-510 \
+        # nvidia-dkms-510 \
     && rm -rf /var/lib/apt/lists/*
 #
 #
@@ -51,9 +51,10 @@ RUN apt-get update -y \
         python3-dev   \
         python3-venv   \
         # NOTE: these might not be required
-        libgdal-dev       \
-        libatlas-base-dev  \
-        libhdf5-serial-dev  \
+        # sudo dpkg -i --force-overwrite /var/cache/apt/archives/libnvidia-compute-510_510.73.05-0ubuntu0.22.04.1_amd64.deb
+        libgdal-dev        \
+        libatlas-base-dev   \
+        libhdf5-serial-dev   \
     && rm -rf /var/lib/apt/lists/*
 #
 #
@@ -138,10 +139,27 @@ COPY --from=cartopy --chown=${USERNAME} /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH" \
     PROJ_LIB="/usr/share/proj" \
     ECCODES_DIR="/usr/include/eccodes" 
-#   
-COPY requirements.txt requirements.txt 
-#
-RUN python -m pip install --no-cache-dir --upgrade pip \
-    && python -m pip install --no-cache-dir -r requirements.txt
-# quick test
-RUN python -m cfgrib selfcheck && python -c "import rasterio as rio; import cartopy.crs as ccrs"
+    
+RUN python3 -m pip install --upgrade pip && python3 -m pip install tensorflow-gpu
+
+RUN python3 -m pip install \
+        pandas \
+        pyarrow \
+        cfgrib \
+        xarray \
+        metpy \
+        s3fs \ 
+        black \
+        jupyter-black
+# #   
+# RUN apt-get update -y \
+#     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --fix-broken \
+#     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libcudart11.0
+
+# COPY requirements.txt requirements.txt 
+# #
+# RUN python -m pip install --no-cache-dir --upgrade pip \
+#     && python -m pip install --no-cache-dir -r requirements.txt
+# # quick test
+# RUN python -m cfgrib selfcheck && python -c "import rasterio as rio; import cartopy.crs as ccrs"
+# sudo apt --fix-broken -y -o Dpkg::Options::="--force-overwrite"  install

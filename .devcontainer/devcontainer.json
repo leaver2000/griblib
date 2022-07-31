@@ -1,9 +1,9 @@
 {
 	"name": "GribLib",
 	"build": {
-		"dockerfile": "../Dockerfile",
+		"dockerfile": "../Dockerfile.gpu",
 		"context": "..",
-		"args": { 
+		"args": {
 			// Options
 			// "NODE_VERSION": "lts/*"
 		}
@@ -13,13 +13,13 @@
 		// Configure properties specific to VS Code.
 		"vscode": {
 			// Set *default* container specific settings.json values on container create.
-			"settings": { 
+			"settings": {
 				// "clang-format.executable": "/usr/bin/clang-format",
 				// python
 				"python.defaultInterpreterPath": "/opt/venv/bin/python",
 				"python.linting.enabled": true,
 				"python.linting.pylintEnabled": true,
-                "python.formatting.provider": "black",
+				"python.formatting.provider": "black",
 				"python.formatting.blackPath": "/opt/venv/bin/black",
 				"python.linting.flake8Path": "/opt/venv/bin/flake8",
 				"python.linting.mypyPath": "/opt/venv/bin/mypy",
@@ -56,13 +56,18 @@
 		}
 	},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
-
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "export PYTHONPATH=/workspaces/griblib/griblib",
+	// "forwardPorts": []
+	// tensorflow GPU support
+	// On versions including and after 19.03, you will use the nvidia-container-toolkit package and the --gpus=all flag. 
+	"runArgs": [
+		"--gpus=all"
+	], // ["--runtime=nvidia"],
+	// docker versions prior to 19.03
+	// "runArgs":["--runtime=nvidia"],
+	// development path options
 	"remoteEnv": {
 		"PYTHONPATH": "/workspaces/griblib/:${containerEnv:PYTHONPATH}:",
-		"JUPYTER_PATH":"/workspaces/griblib/:${containerEnv:JUPYTER_PATH}"
+		"JUPYTER_PATH": "/workspaces/griblib/:${containerEnv:JUPYTER_PATH}"
 	},
 	"remoteUser": "vscode"
 }
