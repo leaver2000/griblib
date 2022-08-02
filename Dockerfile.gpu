@@ -2,24 +2,16 @@
 # syntax=docker/dockerfile:1
 # NAME="Ubuntu"
 # VERSION="20.04.4 LTS (Focal Fossa)"
-# ID=ubuntu
-# ID_LIKE=debian
 # PRETTY_NAME="Ubuntu 20.04.4 LTS"
 # VERSION_ID="20.04"
-# HOME_URL="https://www.ubuntu.com/"
-# SUPPORT_URL="https://help.ubuntu.com/"
-# BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
-# PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
-# VERSION_CODENAME=focal
-# UBUNTU_CODENAME=focal
+
 # ######################### NVIDIA #########################
 # NVIDIA-SMI 515.43.01    Driver Version: 516.01       CUDA Version: 11.7 
 # nvcc: NVIDIA (R) Cuda compiler driver
-# Copyright (c) 2005-2021 NVIDIA Corporation
-# Built on Thu_Nov_18_09:45:30_PST_2021
 # Cuda compilation tools, release 11.5, V11.5.119
 # Build cuda_11.5.r11.5/compiler.30672275_0
 # GPU 0: NVIDIA GeForce RTX 2080 SUPER
+
 # ######################### PYTHON #########################
 # Python 3.10.5 (main, Jun 11 2022, 16:53:24) [GCC 9.4.0] on linux
 # [tensorflow]
@@ -33,7 +25,7 @@
 # ##################################################
 # docker build -t leaver/cuda:base -f Dockerfile.tf .
 # docker run -it --rm --gpus all leaver/cuda:base /bin/bash
-# docker build -t leaver/cuda:base -f Dockerfile.gpu . && docker run -it --rm --gpus all leaver/cuda:base /bin/bash
+# docker build -t leaver/cuda:base -f Dockerfile.gpu . && docker run -it --rm --gpus all leaver/cuda:base /bin/zsh
 
 
 FROM nvidia/cuda:11.2.2-cudnn8-runtime-ubuntu20.04 as base
@@ -74,11 +66,8 @@ RUN apt-get update -y \
     build-essential \
     python3.10-venv python3-pip python3.10-dev \
     # PROJ: https://github.com/OSGeo/PROJ/blob/master/Dockerfile
-    # zlib1g-dev libsqlite3-dev sqlite3 libcurl4-gnutls-dev libtiff5-dev libsqlite3-0 libtiff5 libcurl4 libcurl3-gnutls \
-    zlib1g-dev libsqlite3-dev sqlite3 libcurl4-gnutls-dev libtiff5-dev \
-    libsqlite3-0 libtiff5 \
+    zlib1g-dev libsqlite3-dev sqlite3 libcurl4-gnutls-dev libtiff5-dev libsqlite3-0 libtiff5 \
     libgdal-dev libatlas-base-dev libhdf5-serial-dev\
-    # libgeos-dev libgdal-dev libsqlite3-0 libtiff5 libcurl4 libcurl3-gnutls \
     && rm -rf /var/lib/apt/lists/*
 # 
 # 
@@ -93,7 +82,7 @@ RUN pip install --upgrade --no-cache-dir pip \
     && pip install --no-cache-dir tensorflow-gpu==2.9.1
 # 
 # 
-# 
+# compile ecCodes for cfgrib
 FROM builder as eccodes
 USER root
 WORKDIR /tmp
@@ -129,9 +118,10 @@ WORKDIR /PROJ/build
 RUN cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
     && make -j$(nproc) \
     && make install
-
+# 
+# 
+# 
 FROM base as lunch-box
-
 # user configuration for vscode remote container compatiblity
 # append the vscode user
 ARG USERNAME=vscode
@@ -139,6 +129,7 @@ ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+# create a new user
 # CREDIT: https://github.com/deluan/zsh-in-docker/blob/master/Dockerfile
 RUN groupadd --gid $USER_GID $USERNAME \
     && useradd -s /bin/bash --uid $USER_UID --gid $USER_GID -m $USERNAME \
@@ -146,7 +137,7 @@ RUN groupadd --gid $USER_GID $USERNAME \
     && apt-get install -y sudo wget \
     && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME \
-    # Clean up
+    # clean up
     && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
@@ -172,10 +163,17 @@ ENV ECCODES_DIR=$ECCODES_DIR
 WORKDIR /tmp
 # pandas dask cartopy xarray cfgrib jupyter
 COPY requirements-core.txt requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt && rm requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+
+RUN python -m cfgrib selfcheck
+RUN python -c "import tensorflow as tf;tf.config.list_physical_devices('GPU')"
+RUN python -c "import cartopy.crs as ccrs"
 
 USER $USERNAME
+
 RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.2/zsh-in-docker.sh)" -- \
     -t robbyrussell -p git 
+
 ENTRYPOINT [ "/bin/zsh" ]
-CMD ["-l"]
+# CMD ["-l"]
