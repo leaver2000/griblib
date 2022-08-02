@@ -14,7 +14,6 @@
 		"vscode": {
 			// Set *default* container specific settings.json values on container create.
 			"settings": {
-				// "clang-format.executable": "/usr/bin/clang-format",
 				// python
 				"python.defaultInterpreterPath": "/opt/venv/bin/python",
 				"python.linting.enabled": true,

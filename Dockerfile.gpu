@@ -23,9 +23,9 @@
 # Found: ecCodes v2.24.2.
 # Your system is ready.
 # ##################################################
-# docker build -t leaver/cuda:base -f Dockerfile.tf .
-# docker run -it --rm --gpus all leaver/cuda:base /bin/bash
-# docker build -t leaver/cuda:base -f Dockerfile.gpu . && docker run -it --rm --gpus all leaver/cuda:base /bin/zsh
+# docker build -t leaver/griblib-cudnn8-gpu:1.0.0 -f Dockerfile.tf .
+# docker run -it --rm --gpus all leaver/griblib-cudnn8-gpu:1.0.0 /bin/bash
+# docker build -t leaver/griblib-cudnn8-gpu:1.0.0 -f Dockerfile.gpu . && docker run -it --rm --gpus all leaver/griblib-cudnn8-gpu:1.0.0 /bin/zsh
 
 
 FROM nvidia/cuda:11.2.2-cudnn8-runtime-ubuntu20.04 as base
