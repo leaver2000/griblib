@@ -161,6 +161,13 @@ ENV PATH="$VENV/bin:$PATH"
 ENV ECCODES_DIR=$ECCODES_DIR
 
 WORKDIR /tmp
+
+# dask
+RUN pip install --no-cache-dir \
+    "dask==2022.7.1" \
+    "dask[distributed]==2022.7.1" \
+    "bokeh>=2.1.1"
+
 # pandas dask cartopy xarray cfgrib jupyter
 COPY requirements-core.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
