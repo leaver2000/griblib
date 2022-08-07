@@ -30,7 +30,6 @@
 
 FROM nvidia/cuda:11.2.2-cudnn8-runtime-ubuntu20.04 as base
 USER root
-WORKDIR /
 ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash","-c"]
 # extending the nvidia/cuda base image
@@ -45,8 +44,13 @@ RUN apt-get update -y \
     python3.10 \
     # PROJ: https://github.com/OSGeo/PROJ/blob/master/Dockerfile
     libgeos-3.8.0 libgdal26 \
+    wget git zsh \
     # wget ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+# install zsh & Uses "robbyrussell" theme (original Oh My Zsh theme), with no plugins
+WORKDIR /tmp/zsh
+COPY bin/zsh-in-docker.sh .
+RUN ./zsh-in-docker.sh -t robbyrussell && rm -rf /tmp/zsh
 # 
 # 
 # 
@@ -58,10 +62,9 @@ SHELL ["/bin/bash","-c"]
 # adding several build tools
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends \
-    gcc \
-    g++  \
-    wget  \
-    cmake  \
+    gcc   \
+    g++    \
+    cmake   \
     gfortran \
     build-essential \
     python3.10-venv python3-pip python3.10-dev \
@@ -167,20 +170,24 @@ RUN pip install --no-cache-dir \
     "dask==2022.7.1" \
     "dask[distributed]==2022.7.1" \
     "bokeh>=2.1.1"
+# cupy
+RUN pip install --no-cache-dir \
+    "cupy-cuda11x==11.0.0"
 
 # pandas dask cartopy xarray cfgrib jupyter
 COPY requirements-core.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 
+ENV TF_CPP_MIN_LOG_LEVEL="1"
 RUN python -m cfgrib selfcheck
-RUN python -c "import tensorflow as tf;tf.config.list_physical_devices('GPU')"
+RUN python -c "import tensorflow as tf;print(tf.config.list_physical_devices('GPU'))"
+RUN python -c "import tensorflow as tf;print([tf.config.experimental.get_device_details(gpu) for gpu in tf.config.list_physical_devices('GPU')])"
 RUN python -c "import cartopy.crs as ccrs"
 
+WORKDIR /tmp/zsh
 USER $USERNAME
-
-RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.2/zsh-in-docker.sh)" -- \
-    -t robbyrussell -p git 
+COPY --chown=$USER_UID:$USER_GID bin/zsh-in-docker.sh .
+RUN ./zsh-in-docker.sh -t robbyrussell 
 
 ENTRYPOINT [ "/bin/zsh" ]
-# CMD ["-l"]
