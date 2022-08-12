@@ -4,3 +4,4 @@ archive/
 **/*.idx
 **/*.log
 bucket/
+**/*.pq

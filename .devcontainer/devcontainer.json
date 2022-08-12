@@ -1,7 +1,7 @@
 {
 	"name": "GribLib",
 	"build": {
-		"dockerfile": "../Dockerfile.gpu",
+		"dockerfile": "../Dockerfile.cu",
 		"context": "..",
 		"args": {
 			// Options

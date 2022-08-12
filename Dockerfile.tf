@@ -25,7 +25,7 @@
 # ##################################################
 # docker build -t leaver/griblib-cudnn8-gpu:1.0.0 -f Dockerfile.tf .
 # docker run -it --rm --gpus all leaver/griblib-cudnn8-gpu:1.0.0 /bin/bash
-# docker build -t leaver/griblib-cudnn8-gpu:1.0.0 -f Dockerfile.gpu . && docker run -it --rm --gpus all leaver/griblib-cudnn8-gpu:1.0.0 /bin/zsh
+# docker build -t leaver/griblib-cudnn8-gpu:1.0.0 -f Dockerfile.gpu . && docker run -it --rm --gpus all leaver/griblib-cudnn8-gpu:1.0.0 
 
 
 FROM nvidia/cuda:11.2.2-cudnn8-runtime-ubuntu20.04 as base
@@ -35,13 +35,13 @@ SHELL ["/bin/bash","-c"]
 # extending the nvidia/cuda base image
 RUN apt-get update -y \
     # for add-apt-repository
-    && apt-get install -y --no-install-recommends software-properties-common \
-    # the deadsnakes ppa to install python3.10
-    && add-apt-repository -y ppa:deadsnakes/ppa \
-    && apt-get update -y \
     && apt-get install -y --no-install-recommends \
+    # the deadsnakes ppa to install python3.10
+    # && add-apt-repository -y ppa:deadsnakes/ppa \
+    # && apt-get update -y \
+    # && apt-get install -y --no-install-recommends \
     # python
-    python3.10 \
+    # python3.10 \
     # PROJ: https://github.com/OSGeo/PROJ/blob/master/Dockerfile
     libgeos-3.8.0 libgdal26 \
     wget git zsh \
@@ -51,6 +51,25 @@ RUN apt-get update -y \
 WORKDIR /tmp/zsh
 COPY bin/zsh-in-docker.sh .
 RUN ./zsh-in-docker.sh -t robbyrussell && rm -rf /tmp/zsh
+# install miniconda
+WORKDIR /tmp
+ARG CONDA_PREFIX=/opt/conda
+ENV PATH="$CONDA_PREFIX/bin:$PATH"
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+    # installing miniconda to /opt/conda
+    && /bin/bash Miniconda3-latest-Linux-x86_64.sh -b -p $CONDA_PREFIX \
+    && rm -f Miniconda3-latest-Linux-x86_64.sh \
+    # update the conda package
+    && conda update conda \
+    # conda(base) env ships with python=3.9 so update thatto python 3.10
+    && conda install -y python=3.10 pip \
+    # install and update pip in the base package
+    && python -m pip install --upgrade --no-cache-dir \
+    pip
+
+# RUN conda create -n venv python=3.10
+# ENV PATH="/opt/envs/venv/bin:$PATH"
+# RUN pip install --upgrade pip
 # 
 # 
 # 
@@ -59,7 +78,7 @@ USER root
 WORKDIR /
 ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash","-c"]
-# adding several build tools
+# adding several build tools needed to package compilation
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends \
     gcc   \
@@ -67,7 +86,7 @@ RUN apt-get update -y \
     cmake   \
     gfortran \
     build-essential \
-    python3.10-venv python3-pip python3.10-dev \
+    # python3.10-venv python3-pip python3.10-dev \
     # PROJ: https://github.com/OSGeo/PROJ/blob/master/Dockerfile
     zlib1g-dev libsqlite3-dev sqlite3 libcurl4-gnutls-dev libtiff5-dev libsqlite3-0 libtiff5 \
     libgdal-dev libatlas-base-dev libhdf5-serial-dev\
@@ -75,14 +94,14 @@ RUN apt-get update -y \
 # 
 # 
 # create the virtual environment
-FROM builder as tensorflow
-USER root
-WORKDIR /
-SHELL ["/bin/bash","-c"]
-RUN python3.10 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --upgrade --no-cache-dir pip \
-    && pip install --no-cache-dir tensorflow-gpu==2.9.1
+# FROM builder as tensorflow
+# USER root
+# WORKDIR /
+# SHELL ["/bin/bash","-c"]
+# # RUN python3.10 -m venv /opt/venv
+# # ENV PATH="/opt/venv/bin:$PATH"
+# RUN pip install --upgrade --no-cache-dir pip \
+#     && pip install --no-cache-dir tensorflow-gpu==2.9.1
 # 
 # 
 # compile ecCodes for cfgrib
@@ -99,7 +118,7 @@ RUN wget -c --progress=dot:giga \
 WORKDIR /tmp/build
 # install the ecCodes
 RUN cmake -DCMAKE_INSTALL_PREFIX="${ECCODES_DIR}" -DENABLE_PNG=ON .. \
-    && make \
+    && make -j$(nproc) \
     && make install
 # 
 # 
@@ -124,6 +143,11 @@ RUN cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TEST
 # 
 # 
 # 
+FROM base as rapids-ai
+RUN conda create -n rapids -c rapidsai -c nvidia -c conda-forge  \
+    rapids=22.06 python=3.9 cudatoolkit=11.5 \
+    jupyterlab
+
 FROM base as lunch-box
 # user configuration for vscode remote container compatiblity
 # append the vscode user
@@ -133,38 +157,35 @@ ARG USER_GID=$USER_UID
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # create a new user
-# CREDIT: https://github.com/deluan/zsh-in-docker/blob/master/Dockerfile
 RUN groupadd --gid $USER_GID $USERNAME \
     && useradd -s /bin/bash --uid $USER_UID --gid $USER_GID -m $USERNAME \
     && apt-get update \
-    && apt-get install -y sudo wget \
+    && apt-get install -y sudo \
     && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME \
     # clean up
     && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
-
-
+# [SET USER]
 USER $USERNAME
-# LIB_ECCODES
+# [ecCode Library]
 ARG ECCODES_DIR="/usr/include/eccodes"
 COPY --from=eccodes --chown=$USER_UID:$USER_GID $ECCODES_DIR $ECCODES_DIR
-# LIB_PROJ
-ENV PROJ_LIB="/usr/share/proj"
+ENV ECCODES_DIR=$ECCODES_DIR
+# [PROJ Library]
 COPY --from=proj --chown=$USER_UID:$USER_GID /usr/share/proj/ /usr/share/proj/
 COPY --from=proj --chown=$USER_UID:$USER_GID /usr/include/ /usr/include/
-COPY --from=proj --chown=$USER_UID:$USER_GID  /usr/bin/ /usr/bin/
-COPY --from=proj --chown=$USER_UID:$USER_GID  /usr/lib/ /usr/lib/
-# the python virtual environment
-ARG VENV="/opt/venv"
-COPY --from=tensorflow --chown=$USER_UID:$USER_GID $VENV $VENV
-
-ENV PATH="$VENV/bin:$PATH" 
-ENV ECCODES_DIR=$ECCODES_DIR
+COPY --from=proj --chown=$USER_UID:$USER_GID /usr/bin/ /usr/bin/
+COPY --from=proj --chown=$USER_UID:$USER_GID /usr/lib/ /usr/lib/
+ENV PROJ_LIB="/usr/share/proj"
+# [RAPIDS AI]
+COPY --from=rapids-ai --chown=$USER_UID:$USER_GID /opt/conda/envs/rapids /opt/conda/envs/rapids
 
 WORKDIR /tmp
-
+# tensorflow
+RUN pip install --no-cache-dir \
+    "tensorflow-gpu==2.9.1"
 # dask
 RUN pip install --no-cache-dir \
     "dask==2022.7.1" \
@@ -177,17 +198,29 @@ RUN pip install --no-cache-dir \
 # pandas dask cartopy xarray cfgrib jupyter
 COPY requirements-core.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
-
-
+# [HEALTH-CHECKS]
 ENV TF_CPP_MIN_LOG_LEVEL="1"
+# [CFGRIB]
 RUN python -m cfgrib selfcheck
+# [TENSORFLOW-GPU]
 RUN python -c "import tensorflow as tf;print(tf.config.list_physical_devices('GPU'))"
 RUN python -c "import tensorflow as tf;print([tf.config.experimental.get_device_details(gpu) for gpu in tf.config.list_physical_devices('GPU')])"
+# [CARTOPY]
 RUN python -c "import cartopy.crs as ccrs"
-
+#
+# 
+# 
+# 
 WORKDIR /tmp/zsh
-USER $USERNAME
 COPY --chown=$USER_UID:$USER_GID bin/zsh-in-docker.sh .
 RUN ./zsh-in-docker.sh -t robbyrussell 
+USER root
+RUN apt-get autoremove -y \
+    && apt-get clean -y \
+    && rm -rf /var/lib/apt/lists/*
 
+USER $USERNAME
+RUN conda init bash zsh
+# RUN echo source activate venv >> ~/.zshrc
 ENTRYPOINT [ "/bin/zsh" ]
+
