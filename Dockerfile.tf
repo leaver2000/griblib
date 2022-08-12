@@ -2,24 +2,16 @@
 # syntax=docker/dockerfile:1
 # NAME="Ubuntu"
 # VERSION="20.04.4 LTS (Focal Fossa)"
-# ID=ubuntu
-# ID_LIKE=debian
 # PRETTY_NAME="Ubuntu 20.04.4 LTS"
 # VERSION_ID="20.04"
-# HOME_URL="https://www.ubuntu.com/"
-# SUPPORT_URL="https://help.ubuntu.com/"
-# BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
-# PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
-# VERSION_CODENAME=focal
-# UBUNTU_CODENAME=focal
+
 # ######################### NVIDIA #########################
 # NVIDIA-SMI 515.43.01    Driver Version: 516.01       CUDA Version: 11.7 
 # nvcc: NVIDIA (R) Cuda compiler driver
-# Copyright (c) 2005-2021 NVIDIA Corporation
-# Built on Thu_Nov_18_09:45:30_PST_2021
 # Cuda compilation tools, release 11.5, V11.5.119
 # Build cuda_11.5.r11.5/compiler.30672275_0
 # GPU 0: NVIDIA GeForce RTX 2080 SUPER
+
 # ######################### PYTHON #########################
 # Python 3.10.5 (main, Jun 11 2022, 16:53:24) [GCC 9.4.0] on linux
 # [tensorflow]
@@ -31,30 +23,41 @@
 # Found: ecCodes v2.24.2.
 # Your system is ready.
 # ##################################################
-# docker build -t leaver/cuda:base -f Dockerfile.tf .
-# docker run -it --rm --gpus all leaver/cuda:base /bin/bash
-# docker build -t leaver/cuda:base -f Dockerfile.gpu . && docker run -it --rm --gpus all leaver/cuda:base /bin/bash
+# docker build -t leaver/griblib-cudnn8-gpu:1.0.0 -f Dockerfile.tf .
+# docker run -it --rm --gpus all leaver/griblib-cudnn8-gpu:1.0.0 /bin/bash
+# docker build -t leaver/griblib-cudnn8-gpu:1.0.0 -f Dockerfile.gpu . && docker run -it --rm --gpus all leaver/griblib-cudnn8-gpu:1.0.0 
 
 
 FROM nvidia/cuda:11.2.2-cudnn8-runtime-ubuntu20.04 as base
 USER root
-WORKDIR /
 ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash","-c"]
 # extending the nvidia/cuda base image
 RUN apt-get update -y \
-    # for add-apt-repository
-    && apt-get install -y --no-install-recommends software-properties-common \
-    # the deadsnakes ppa to install python3.10
-    && add-apt-repository -y ppa:deadsnakes/ppa \
-    && apt-get update -y \
     && apt-get install -y --no-install-recommends \
-    # python
-    python3.10 \
     # PROJ: https://github.com/OSGeo/PROJ/blob/master/Dockerfile
     libgeos-3.8.0 libgdal26 \
-    # wget ca-certificates \
+    wget git zsh \
     && rm -rf /var/lib/apt/lists/*
+# [ OH-MY-ZSH ] 
+WORKDIR /tmp/zsh
+COPY bin/zsh-in-docker.sh .
+RUN ./zsh-in-docker.sh -t robbyrussell && rm -rf /tmp/zsh
+# [ MINICONDA ]
+WORKDIR /tmp
+ARG CONDA_PREFIX=/opt/conda
+ENV PATH="$CONDA_PREFIX/bin:$PATH"
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+    # installing miniconda to /opt/conda
+    && /bin/bash Miniconda3-latest-Linux-x86_64.sh -b -p $CONDA_PREFIX \
+    && rm -f Miniconda3-latest-Linux-x86_64.sh \
+    # update the conda package
+    && conda update conda \
+    # conda(base) env ships with python=3.9 so update thatto python 3.10
+    && conda install -y python=3.10 pip \
+    # install and update pip in the base package
+    && python -m pip install --upgrade --no-cache-dir \
+    pip
 # 
 # 
 # 
@@ -63,37 +66,21 @@ USER root
 WORKDIR /
 ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash","-c"]
-# adding several build tools
+# adding several build tools needed to package compilation
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends \
-    gcc \
-    g++  \
-    wget  \
-    cmake  \
+    gcc   \
+    g++    \
+    cmake   \
     gfortran \
     build-essential \
-    python3.10-venv python3-pip python3.10-dev \
     # PROJ: https://github.com/OSGeo/PROJ/blob/master/Dockerfile
-    # zlib1g-dev libsqlite3-dev sqlite3 libcurl4-gnutls-dev libtiff5-dev libsqlite3-0 libtiff5 libcurl4 libcurl3-gnutls \
-    zlib1g-dev libsqlite3-dev sqlite3 libcurl4-gnutls-dev libtiff5-dev \
-    libsqlite3-0 libtiff5 \
+    zlib1g-dev libsqlite3-dev sqlite3 libcurl4-gnutls-dev libtiff5-dev libsqlite3-0 libtiff5 \
     libgdal-dev libatlas-base-dev libhdf5-serial-dev\
-    # libgeos-dev libgdal-dev libsqlite3-0 libtiff5 libcurl4 libcurl3-gnutls \
     && rm -rf /var/lib/apt/lists/*
 # 
 # 
-# create the virtual environment
-FROM builder as tensorflow
-USER root
-WORKDIR /
-SHELL ["/bin/bash","-c"]
-RUN python3.10 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --upgrade --no-cache-dir pip \
-    && pip install --no-cache-dir tensorflow-gpu==2.9.1
-# 
-# 
-# 
+# compile ecCodes for cfgrib
 FROM builder as eccodes
 USER root
 WORKDIR /tmp
@@ -107,7 +94,7 @@ RUN wget -c --progress=dot:giga \
 WORKDIR /tmp/build
 # install the ecCodes
 RUN cmake -DCMAKE_INSTALL_PREFIX="${ECCODES_DIR}" -DENABLE_PNG=ON .. \
-    && make \
+    && make -j$(nproc) \
     && make install
 # 
 # 
@@ -129,53 +116,85 @@ WORKDIR /PROJ/build
 RUN cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
     && make -j$(nproc) \
     && make install
+# 
+# 
+# 
+FROM base as rapids-ai
+RUN conda create -n rapids -c rapidsai -c nvidia -c conda-forge  \
+    rapids=22.06 python=3.9 cudatoolkit=11.5 \
+    jupyterlab
 
 FROM base as lunch-box
-
 # user configuration for vscode remote container compatiblity
 # append the vscode user
 ARG USERNAME=vscode
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
-
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-# CREDIT: https://github.com/deluan/zsh-in-docker/blob/master/Dockerfile
+# create a new user
 RUN groupadd --gid $USER_GID $USERNAME \
     && useradd -s /bin/bash --uid $USER_UID --gid $USER_GID -m $USERNAME \
     && apt-get update \
-    && apt-get install -y sudo wget \
+    && apt-get install -y sudo \
     && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME \
-    # Clean up
+    # clean up
     && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
-
-
+# [SET USER]
 USER $USERNAME
-# LIB_ECCODES
+# [ecCode Library]
 ARG ECCODES_DIR="/usr/include/eccodes"
 COPY --from=eccodes --chown=$USER_UID:$USER_GID $ECCODES_DIR $ECCODES_DIR
-# LIB_PROJ
-ENV PROJ_LIB="/usr/share/proj"
+ENV ECCODES_DIR=$ECCODES_DIR
+# [PROJ Library]
 COPY --from=proj --chown=$USER_UID:$USER_GID /usr/share/proj/ /usr/share/proj/
 COPY --from=proj --chown=$USER_UID:$USER_GID /usr/include/ /usr/include/
-COPY --from=proj --chown=$USER_UID:$USER_GID  /usr/bin/ /usr/bin/
-COPY --from=proj --chown=$USER_UID:$USER_GID  /usr/lib/ /usr/lib/
-# the python virtual environment
-ARG VENV="/opt/venv"
-COPY --from=tensorflow --chown=$USER_UID:$USER_GID $VENV $VENV
-
-ENV PATH="$VENV/bin:$PATH" 
-ENV ECCODES_DIR=$ECCODES_DIR
-
+COPY --from=proj --chown=$USER_UID:$USER_GID /usr/bin/ /usr/bin/
+COPY --from=proj --chown=$USER_UID:$USER_GID /usr/lib/ /usr/lib/
+ENV PROJ_LIB="/usr/share/proj"
+# [RAPIDS AI]
+COPY --from=rapids-ai --chown=$USER_UID:$USER_GID /opt/conda/envs/rapids /opt/conda/envs/rapids
+# 
 WORKDIR /tmp
-# pandas dask cartopy xarray cfgrib jupyter
+# tensorflow
+RUN pip install --no-cache-dir \
+    "tensorflow-gpu==2.9.1"
+# dask
+RUN pip install --no-cache-dir \
+    "dask==2022.7.1" \
+    "dask[distributed]==2022.7.1" \
+    "bokeh>=2.1.1"
+# cupy
+RUN pip install --no-cache-dir \
+    "cupy-cuda11x==11.0.0"
+# 
+# pandas dask cartopy xarray cfgrib jupyter ...
 COPY requirements-core.txt requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt && rm requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+# [HEALTH-CHECKS]
+ENV TF_CPP_MIN_LOG_LEVEL="1"
+# [CFGRIB]
+RUN python -m cfgrib selfcheck
+# [TENSORFLOW-GPU]
+RUN python -c "import tensorflow as tf;print(tf.config.list_physical_devices('GPU'))"
+RUN python -c "import tensorflow as tf;print([tf.config.experimental.get_device_details(gpu) for gpu in tf.config.list_physical_devices('GPU')])"
+# [CARTOPY]
+RUN python -c "import cartopy.crs as ccrs"
+#
+# 
+# 
+# 
+WORKDIR /tmp/zsh
+COPY --chown=$USER_UID:$USER_GID bin/zsh-in-docker.sh .
+RUN ./zsh-in-docker.sh -t robbyrussell 
+USER root
+RUN apt-get autoremove -y \
+    && apt-get clean -y \
+    && rm -rf /var/lib/apt/lists/*
 
 USER $USERNAME
-RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.2/zsh-in-docker.sh)" -- \
-    -t robbyrussell -p git 
+RUN conda init bash zsh
 ENTRYPOINT [ "/bin/zsh" ]
-CMD ["-l"]
+
