@@ -34,24 +34,16 @@ ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash","-c"]
 # extending the nvidia/cuda base image
 RUN apt-get update -y \
-    # for add-apt-repository
     && apt-get install -y --no-install-recommends \
-    # the deadsnakes ppa to install python3.10
-    # && add-apt-repository -y ppa:deadsnakes/ppa \
-    # && apt-get update -y \
-    # && apt-get install -y --no-install-recommends \
-    # python
-    # python3.10 \
     # PROJ: https://github.com/OSGeo/PROJ/blob/master/Dockerfile
     libgeos-3.8.0 libgdal26 \
     wget git zsh \
-    # wget ca-certificates \
     && rm -rf /var/lib/apt/lists/*
-# install zsh & Uses "robbyrussell" theme (original Oh My Zsh theme), with no plugins
+# [ OH-MY-ZSH ] 
 WORKDIR /tmp/zsh
 COPY bin/zsh-in-docker.sh .
 RUN ./zsh-in-docker.sh -t robbyrussell && rm -rf /tmp/zsh
-# install miniconda
+# [ MINICONDA ]
 WORKDIR /tmp
 ARG CONDA_PREFIX=/opt/conda
 ENV PATH="$CONDA_PREFIX/bin:$PATH"
@@ -66,10 +58,6 @@ RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
     # install and update pip in the base package
     && python -m pip install --upgrade --no-cache-dir \
     pip
-
-# RUN conda create -n venv python=3.10
-# ENV PATH="/opt/envs/venv/bin:$PATH"
-# RUN pip install --upgrade pip
 # 
 # 
 # 
@@ -86,22 +74,10 @@ RUN apt-get update -y \
     cmake   \
     gfortran \
     build-essential \
-    # python3.10-venv python3-pip python3.10-dev \
     # PROJ: https://github.com/OSGeo/PROJ/blob/master/Dockerfile
     zlib1g-dev libsqlite3-dev sqlite3 libcurl4-gnutls-dev libtiff5-dev libsqlite3-0 libtiff5 \
     libgdal-dev libatlas-base-dev libhdf5-serial-dev\
     && rm -rf /var/lib/apt/lists/*
-# 
-# 
-# create the virtual environment
-# FROM builder as tensorflow
-# USER root
-# WORKDIR /
-# SHELL ["/bin/bash","-c"]
-# # RUN python3.10 -m venv /opt/venv
-# # ENV PATH="/opt/venv/bin:$PATH"
-# RUN pip install --upgrade --no-cache-dir pip \
-#     && pip install --no-cache-dir tensorflow-gpu==2.9.1
 # 
 # 
 # compile ecCodes for cfgrib
@@ -154,7 +130,6 @@ FROM base as lunch-box
 ARG USERNAME=vscode
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
-
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # create a new user
 RUN groupadd --gid $USER_GID $USERNAME \
@@ -181,7 +156,7 @@ COPY --from=proj --chown=$USER_UID:$USER_GID /usr/lib/ /usr/lib/
 ENV PROJ_LIB="/usr/share/proj"
 # [RAPIDS AI]
 COPY --from=rapids-ai --chown=$USER_UID:$USER_GID /opt/conda/envs/rapids /opt/conda/envs/rapids
-
+# 
 WORKDIR /tmp
 # tensorflow
 RUN pip install --no-cache-dir \
@@ -194,8 +169,8 @@ RUN pip install --no-cache-dir \
 # cupy
 RUN pip install --no-cache-dir \
     "cupy-cuda11x==11.0.0"
-
-# pandas dask cartopy xarray cfgrib jupyter
+# 
+# pandas dask cartopy xarray cfgrib jupyter ...
 COPY requirements-core.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 # [HEALTH-CHECKS]
@@ -221,6 +196,5 @@ RUN apt-get autoremove -y \
 
 USER $USERNAME
 RUN conda init bash zsh
-# RUN echo source activate venv >> ~/.zshrc
 ENTRYPOINT [ "/bin/zsh" ]
 
