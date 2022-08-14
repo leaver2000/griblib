@@ -3,3 +3,6 @@ __pycache__/
 archive/
 **/*.idx
 **/*.log
+bucket/
+**/*.pq
+**/dask-worker-space/
