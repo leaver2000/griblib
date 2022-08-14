@@ -71,9 +71,7 @@ def __generate_from_features(session: Session, *, urls: Iterable[str]) -> Iterab
         yield df
 
 
-def __wrangle_geometry(
-    df: GeoDataFrame
-) -> pd.DataFrame:
+def __wrangle_geometry(df: GeoDataFrame) -> pd.DataFrame:
     geometry: GeoSeries = df.geometry
     bounds = geometry.bounds
     # to keep thins consistent uppercase all of the bounds
@@ -85,45 +83,52 @@ def __wrangle_geometry(
 
 def __wrangle_dtypes(
     ddf: DaskDataFrame,
-    *,
-    float32_cols: list[str] = [
-        "EBSHEAR",
-        "MEANWIND_1-3kmAGL",
-        "MESH",
-        "VIL_DENSITY",
-        "FLASH_DENSITY",
-        "MOTION_EAST",
-        "MOTION_SOUTH",
-        "MAXLLAZ",
-        "P98LLAZ",
-        "P98MLAZ",
-        "WETBULB_0C_HGT",
-        "PWAT",
-        "LJA",
-        "MINX",
-        "MINY",
-        "MAXX",
-        "MAXY",
-        "CENTROID_X",
-        "CENTROID_Y",
-    ],
-    int32_cols: list[str] = [
-        "MLCIN",
-    ],
-    uint32_cols: list[str] = [
-        "MUCAPE",
-        "MLCAPE",
-        "SRH01KM",
-        "FLASH_RATE",
-        "CAPE_M10M30",
-        "SIZE",
-        "ID",
-    ],
-    # 0 - 255
-    uint8_cols: list[str] = [
-        "PS",
-    ],
 ) -> DaskDataFrame:
+    float32_cols = (
+        [
+            "EBSHEAR",
+            "MEANWIND_1-3kmAGL",
+            "MESH",
+            "VIL_DENSITY",
+            "FLASH_DENSITY",
+            "MOTION_EAST",
+            "MOTION_SOUTH",
+            "MAXLLAZ",
+            "P98LLAZ",
+            "P98MLAZ",
+            "WETBULB_0C_HGT",
+            "PWAT",
+            "LJA",
+            "MINX",
+            "MINY",
+            "MAXX",
+            "MAXY",
+            "CENTROID_X",
+            "CENTROID_Y",
+        ],
+    )
+    int32_cols = (
+        [
+            "MLCIN",
+        ],
+    )
+    uint32_cols = (
+        [
+            "MUCAPE",
+            "MLCAPE",
+            "SRH01KM",
+            "FLASH_RATE",
+            "CAPE_M10M30",
+            "SIZE",
+            "ID",
+        ],
+    )
+    # 0 - 255
+    uint8_cols = (
+        [
+            "PS",
+        ],
+    )
 
     ddf[float32_cols] = ddf[float32_cols].astype(np.float32)
     # 32-bit signed integer (``-2_147_483_648`` to ``2_147_483_647``)
@@ -140,8 +145,8 @@ def __to_dask(df: pd.DataFrame, *, chunk_size: int) -> DaskDataFrame:
 
 
 def __name_function(time: datetime) -> Callable[[int], str]:
-    date_string = time.strftime("%Y-%m-%d")
-    return lambda n: f"{n}-{date_string}.pq"
+    yymmdd = time.strftime("%Y-%m-%d")
+    return lambda n: f"{n}-{yymmdd}.pq"
 
 
 def download2parquet(
