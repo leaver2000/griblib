@@ -84,51 +84,43 @@ def __wrangle_geometry(df: GeoDataFrame) -> pd.DataFrame:
 def __wrangle_dtypes(
     ddf: DaskDataFrame,
 ) -> DaskDataFrame:
-    float32_cols = (
-        [
-            "EBSHEAR",
-            "MEANWIND_1-3kmAGL",
-            "MESH",
-            "VIL_DENSITY",
-            "FLASH_DENSITY",
-            "MOTION_EAST",
-            "MOTION_SOUTH",
-            "MAXLLAZ",
-            "P98LLAZ",
-            "P98MLAZ",
-            "WETBULB_0C_HGT",
-            "PWAT",
-            "LJA",
-            "MINX",
-            "MINY",
-            "MAXX",
-            "MAXY",
-            "CENTROID_X",
-            "CENTROID_Y",
-        ],
-    )
-    int32_cols = (
-        [
-            "MLCIN",
-        ],
-    )
-    uint32_cols = (
-        [
-            "MUCAPE",
-            "MLCAPE",
-            "SRH01KM",
-            "FLASH_RATE",
-            "CAPE_M10M30",
-            "SIZE",
-            "ID",
-        ],
-    )
+    float32_cols = [
+        "EBSHEAR",
+        "MEANWIND_1-3kmAGL",
+        "MESH",
+        "VIL_DENSITY",
+        "FLASH_DENSITY",
+        "MOTION_EAST",
+        "MOTION_SOUTH",
+        "MAXLLAZ",
+        "P98LLAZ",
+        "P98MLAZ",
+        "WETBULB_0C_HGT",
+        "PWAT",
+        "LJA",
+        "MINX",
+        "MINY",
+        "MAXX",
+        "MAXY",
+        "CENTROID_X",
+        "CENTROID_Y",
+    ]
+    int32_cols = [
+        "MLCIN",
+    ]
+    uint32_cols = [
+        "MUCAPE",
+        "MLCAPE",
+        "SRH01KM",
+        "FLASH_RATE",
+        "CAPE_M10M30",
+        "SIZE",
+        "ID",
+    ]
     # 0 - 255
-    uint8_cols = (
-        [
-            "PS",
-        ],
-    )
+    uint8_cols = [
+        "PS",
+    ]
 
     ddf[float32_cols] = ddf[float32_cols].astype(np.float32)
     # 32-bit signed integer (``-2_147_483_648`` to ``2_147_483_647``)
