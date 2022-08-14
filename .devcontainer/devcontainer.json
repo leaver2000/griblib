@@ -1,7 +1,7 @@
 {
 	"name": "GribLib",
 	"build": {
-		"dockerfile": "../Dockerfile.cu",
+		"dockerfile": "../Dockerfile.gpu",
 		"context": "..",
 		"args": {
 			// Options
@@ -40,10 +40,10 @@
 				// python
 				"ms-python.python",
 				"ms-python.vscode-pylance",
+				"ms-toolsai.jupyter",
 				// linting
 				"mikestead.dotenv",
 				"redhat.vscode-yaml",
-				"ms-toolsai.jupyter",
 				"bungcip.better-toml",
 				"shanoor.vscode-nginx",
 				"oderwat.indent-rainbow",
@@ -56,13 +56,9 @@
 	},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": []
-	// tensorflow GPU support
-	// On versions including and after 19.03, you will use the nvidia-container-toolkit package and the --gpus=all flag. 
 	"runArgs": [
 		"--gpus=all"
-	], // ["--runtime=nvidia"],
-	// docker versions prior to 19.03
-	// "runArgs":["--runtime=nvidia"],
+	],
 	// development path options
 	"remoteEnv": {
 		"PYTHONPATH": "/workspaces/griblib/:${containerEnv:PYTHONPATH}:",
