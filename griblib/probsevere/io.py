@@ -1,5 +1,5 @@
-"""input output for probsevere data"""
-__all__ = ["download2parquet","PROBSEVERE_URL_TEMPLATE","VALIDTIME_TEMPLATE"]
+# """input output for probsevere data"""
+# __all__ = ["download2parquet","PROBSEVERE_URL_TEMPLATE","VALIDTIME_TEMPLATE"]
 from pathlib import Path
 from warnings import warn
 from datetime import datetime
@@ -9,12 +9,12 @@ import pandas as pd
 import numpy as np
 import dask.dataframe as dd
 from dask.dataframe.core import DataFrame as DaskDataFrame
-from geopandas import GeoDataFrame, GeoSeries
+from geopandas import GeoDataFrame
 from requests import Session, HTTPError
 
-from ..probsevere.typed import FeatureCollection
+from griblib.probsevere.typed import FeatureCollection
 
-PROBSEVERE_URL_TEMPLATE = (
+URL_TEMPLATE = (
     "https://mtarchive.geol.iastate.edu/%Y/%m/%d/mrms/ncep/ProbSevere/MRMS_PROBSEVERE_%Y%m%d_%H%M00.json"
 )
 VALIDTIME_TEMPLATE="%Y%m%d_%H%M%S %Z"
@@ -42,7 +42,7 @@ def __iterdaterange(
         _description_
     """
     dr = pd.date_range(start=start, end=end, freq=freq)
-    urls = dr.strftime(PROBSEVERE_URL_TEMPLATE)
+    urls = dr.strftime(URL_TEMPLATE)
     yield from pd.DataFrame({"date": dr, "urls": urls}).set_index(dr).groupby(pd.Grouper(key="date", freq="D", axis=0))
 
 
@@ -67,18 +67,17 @@ def __generate_from_features(session: Session, *, urls: Iterable[str]) -> Iterab
 
         df = GeoDataFrame.from_features(features)
         # validtime = datetime.strptime(fc["validTime"], "%Y%m%d_%H%M%S %Z")
-        df["VALIDTIME"] = datetime.strptime(fc["validTime"], "%Y%m%d_%H%M%S %Z")
+        df["VALIDTIME"] = datetime.strptime(fc["validTime"], VALIDTIME_TEMPLATE)
         yield df
 
 
 def __wrangle_geometry(df: GeoDataFrame) -> pd.DataFrame:
-    geometry: GeoSeries = df.geometry
-    bounds = geometry.bounds
     # to keep thins consistent uppercase all of the bounds
-    bounds.columns = bounds.columns.str.upper()
-    bounds["CENTROID_X"] = geometry.centroid.x
-    bounds["CENTROID_Y"] = geometry.centroid.y
-    return pd.concat((df, bounds), axis=1)
+    df[df.bounds.columns.str.upper()] = df.bounds
+    point = df.representative_point()
+    df["X"] = point.x
+    df["Y"] = point.y
+    return df
 
 
 def __wrangle_dtypes(
@@ -102,8 +101,8 @@ def __wrangle_dtypes(
         "MINY",
         "MAXX",
         "MAXY",
-        "CENTROID_X",
-        "CENTROID_Y",
+        "X",
+        "Y",
     ]
     int32_cols = [
         "MLCIN",
@@ -149,7 +148,6 @@ def download2parquet(
     freq: str = "2min",
     chunk_size: int = 256,
 ) -> None:
-
     """download and save probsevere data
 
     Parameters
