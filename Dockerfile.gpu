@@ -19,24 +19,24 @@ RUN apt-get update -y \
     wget git zsh \
     && rm -rf /var/lib/apt/lists/*
 # [ OH-MY-ZSH ] 
-WORKDIR /tmp/zsh
-COPY bin/zsh-in-docker.sh .
-RUN ./zsh-in-docker.sh -t robbyrussell && rm -rf /tmp/zsh
+# WORKDIR /tmp/zsh
+# COPY bin/zsh-in-docker.sh .
+# RUN ./zsh-in-docker.sh -t robbyrussell && rm -rf /tmp/zsh
 # [ MINICONDA ]
 WORKDIR /tmp
 ARG CONDA_PREFIX=/opt/conda
-ENV PATH="$CONDA_PREFIX/bin:$PATH"
-RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+ENV PATH="${CONDA_PREFIX}/bin:$PATH"
+ARG MINICONDA_FILE=Miniconda3-py39_4.12.0-Linux-x86_64.sh
+SHELL ["/bin/bash","-c"]
+RUN wget https://repo.anaconda.com/miniconda/$MINICONDA_FILE \
     # installing miniconda to /opt/conda
-    && /bin/bash Miniconda3-latest-Linux-x86_64.sh -b -p $CONDA_PREFIX \
-    && rm -f Miniconda3-latest-Linux-x86_64.sh \
-    # update the conda package
-    && conda update conda \
-    # conda(base) env ships with python=3.9 so update thatto python 3.10
-    && conda install -y python=3.10 pip \
-    # install and update pip in the base package
-    && python -m pip install --upgrade --no-cache-dir \
-    pip
+    && bash $MINICONDA_FILE -b -p $CONDA_PREFIX && rm -f $MINICONDA_FILE \
+    # # update the conda package
+    && conda update -n base -c defaults conda \
+    # && conda init bash zsh \
+    && conda create -n venv python=3.10 pip
+SHELL ["conda", "run", "-n", "venv", "/bin/bash", "-c"]
+RUN python -m pip install --upgrade --no-cache-dir pip
 # 
 # 
 # 
@@ -121,6 +121,13 @@ RUN groupadd --gid $USER_GID $USERNAME \
     && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
+# [ OH-MY-ZSH ] 
+USER $USERNAME
+WORKDIR /tmp/zsh
+RUN conda init zsh
+COPY --chown=$USER_UID:$USER_GID bin/zsh-in-docker.sh .
+RUN ./zsh-in-docker.sh -t robbyrussell 
+# 
 # [SET USER]
 USER $USERNAME
 # [ecCode Library]
@@ -137,44 +144,46 @@ ENV PROJ_LIB="/usr/share/proj"
 COPY --from=rapids-ai --chown=$USER_UID:$USER_GID /opt/conda/envs/rapids /opt/conda/envs/rapids
 # 
 WORKDIR /tmp
+SHELL ["conda", "run", "-n", "venv", "/bin/bash", "-c"]
 # tensorflow
 RUN pip install --no-cache-dir \
-    "tensorflow-gpu==2.9.1"
-# dask
-RUN pip install --no-cache-dir \
+    # [tenmsorflow]
+    "tensorflow-gpu==2.9.1" \
+    # [dask]
     "dask==2022.7.1" \
     "dask[distributed]==2022.7.1" \
-    "bokeh>=2.1.1"
-# cupy
-RUN pip install --no-cache-dir \
+    "bokeh>=2.1.1" \
+    # [cupy]
     "cupy-cuda11x==11.0.0"
 
-# 
-# pandas dask cartopy xarray cfgrib jupyter ...
-COPY requirements-core.txt requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
-# [HEALTH-CHECKS]
-ENV TF_CPP_MIN_LOG_LEVEL="1"
-# [CFGRIB]
-RUN python -m cfgrib selfcheck
-# [TENSORFLOW-GPU]
-RUN python -c "import tensorflow as tf;print(tf.config.list_physical_devices('GPU'))"
-RUN python -c "import tensorflow as tf;print([tf.config.experimental.get_device_details(gpu) for gpu in tf.config.list_physical_devices('GPU')])"
-# [CARTOPY]
-RUN python -c "import cartopy.crs as ccrs"
-#
-# 
-# 
-# 
-WORKDIR /tmp/zsh
-COPY --chown=$USER_UID:$USER_GID bin/zsh-in-docker.sh .
-RUN ./zsh-in-docker.sh -t robbyrussell 
+# # 
+# # pandas dask cartopy xarray cfgrib jupyter ...
+# COPY requirements.txt requirements.txt
+# RUN pip install --no-cache-dir -r requirements.txt
+# # [HEALTH-CHECKS]
+# ENV TF_CPP_MIN_LOG_LEVEL="1"
+# # [CFGRIB]
+# RUN python -m cfgrib selfcheck
+# # [TENSORFLOW-GPU]
+# RUN python -c "import tensorflow as tf;print(tf.config.list_physical_devices('GPU'))"
+# RUN python -c "import tensorflow as tf;print([tf.config.experimental.get_device_details(gpu) for gpu in tf.config.list_physical_devices('GPU')])"
+# # [CARTOPY]
+# RUN python -c "import cartopy.crs as ccrs"
+# #
+# # 
+# # 
+# # 
 USER root
 RUN apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 
 USER $USERNAME
-RUN conda init bash zsh
-ENTRYPOINT [ "/bin/zsh" ]
+# COPY bin/zsh-in-docker.sh .
+# RUN ./zsh-in-docker.sh -t robbyrussell && rm -rf /tmp/zsh
 
+# ENV PATH=/opt/conda/envs/venv/bin:$PATH
+RUN echo "source activate venv" >> ~/.zshrc
+# ENV CONDA_DEFAULT_ENV=/opt/conda/$conda_env/venv/bin
+# RUN /bin/zsh -c "source activate venv"
+ENTRYPOINT [ "/bin/zsh" ]
