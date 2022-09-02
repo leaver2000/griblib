@@ -1,16 +1,15 @@
-
-
 # """input output for probsevere data"""
 __all__ = ["iterdaterange"]
 from datetime import datetime
-from typing import  Iterator, Union
+from typing import Iterator, Union
 import pandas as pd
 
 
 TimeLike = Union[datetime, str, pd.Timestamp]
 
+
 def iterdaterange(
-    start: TimeLike, end: TimeLike, *, freq: str = "2min", url_pattern:str=...
+    start: TimeLike, end: TimeLike, *, freq: str = "2min", url_pattern: str = ...
 ) -> Iterator[tuple[pd.Timestamp, pd.DataFrame]]:
     """yields the probsevere urls grouped by dates
 

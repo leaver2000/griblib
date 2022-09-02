@@ -14,10 +14,8 @@ from requests import Session, HTTPError
 
 from griblib.probsevere.typed import FeatureCollection
 
-URL_TEMPLATE = (
-    "https://mtarchive.geol.iastate.edu/%Y/%m/%d/mrms/ncep/ProbSevere/MRMS_PROBSEVERE_%Y%m%d_%H%M00.json"
-)
-VALIDTIME_TEMPLATE="%Y%m%d_%H%M%S %Z"
+URL_TEMPLATE = "https://mtarchive.geol.iastate.edu/%Y/%m/%d/mrms/ncep/ProbSevere/MRMS_PROBSEVERE_%Y%m%d_%H%M00.json"
+VALIDTIME_TEMPLATE = "%Y%m%d_%H%M%S %Z"
 
 TimeLike = Union[datetime, str, pd.Timestamp]
 
