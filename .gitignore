@@ -6,3 +6,6 @@ archive/
 bucket/
 **/*.pq
 **/dask-worker-space/
+hrrr/
+node_modules/
+data/
