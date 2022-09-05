@@ -1,15 +1,14 @@
 from pathlib import Path
-from .probsevere.box import BoundingBox, parquet_session
+from ._bbox import BoundingBox
+from .probsevere._pq import parquet_session
 
 
 def main(files: tuple[Path, ...]):
-    bbox = BoundingBox(20.005, 54.995, -129.995, -60.005, shape=(7000, 2500))
-    with parquet_session(files[:10]) as gdf:
-        print(gdf)
+    bbox = BoundingBox(20.005, 54.995, -60.005, -129.995, shape=(7000, 2500))
+    with parquet_session(files) as gdf:
         gdf["Y"] = bbox.fit_array(gdf["Y"].values, axis="Y")
         gdf["X"] = bbox.fit_array(gdf["X"].values, axis="X")
-        df = gdf.to_pandas()
-    print(df)
+        print(gdf)
 
 
 if __name__ == "__main__":
@@ -17,5 +16,4 @@ if __name__ == "__main__":
     all_files = tuple(ps_data.rglob("*.pq"))
     assert len(all_files) == 8612
     bbox = BoundingBox(20.005, 54.995, -129.995, -60.005, shape=(7000, 2500))
-
-    main(all_files)
+    main(all_files[: len(all_files) // 40])

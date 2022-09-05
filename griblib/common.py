@@ -3,6 +3,11 @@ from typing import Callable, Literal, Iterator, overload
 import xarray as xr
 
 
+class CaseInsensiveSTR(str):
+    def __eq__(self, __other: str):
+        return self.casefold() == __other.casefold()
+
+
 class GribBase:
     """base grib class"""
 

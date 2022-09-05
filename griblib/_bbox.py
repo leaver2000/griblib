@@ -1,69 +1,16 @@
-from pathlib import Path
-from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Callable, Iterable, Generator, Literal
+from typing import Literal
 
 try:
-    from cudf import DataFrame, read_parquet
     import cupy as cp
 except ModuleNotFoundError:
-    from cudf import DataFrame, read_parquet
     import numpy as cp
 
 import numpy as np
 import nvector as nv
-from numpy.typing import NDArray
 
-
-class CUDArray(NDArray):
-    def get(self) -> np.ndarray:
-        ...
-
-
-class CaseInsensiveSTR(str):
-    def __eq__(self, __other: str):
-        return self.casefold() == __other.casefold()
-
-
-@contextmanager
-def parquet_session(
-    files: Iterable[Path], *, engine: str = "cudf", index: list[str] = ["VALIDTIME", "ID"]
-) -> Generator[DataFrame, None, None]:
-    """
-
-    context manager to remove the dataframe from the gpu memory
-    """
-    try:
-        gdf = read_parquet(files, engine=engine).set_index(index).sort_index()
-        yield gdf
-    finally:
-        del gdf
-
-
-def enforce_literal(exc: Exception = Exception, case_insensitive: bool = True):
-    """
-    decorator function to inforce Litteral type hint annotations on keyword arguments
-    """
-
-    def __generate(_func_kwargs: dict[str, any]):
-        for k, v in _func_kwargs.items():
-            if v.__class__.__name__ == "_LiteralGenericAlias":
-                yield k, tuple(
-                    _v if case_insensitive and not isinstance(_v, str) else CaseInsensiveSTR(_v) for _v in v.__args__
-                )
-
-    def wraps(func: Callable):
-        enforce = tuple(__generate(func.__annotations__))
-
-        def inner(*args, **kwargs):
-            for k, v in enforce:
-                if not kwargs[k] in v:
-                    raise exc
-            return func(*args, **kwargs)
-
-        return inner
-
-    return wraps
+from griblib.exceptions import enforce_literal
+from griblib.typing import CUDArray
 
 
 @dataclass(frozen=True)
@@ -88,8 +35,8 @@ class BoundingBox:
 
     south: float
     north: float
-    east: float
     west: float
+    east: float
     shape: tuple[int, int]
     frame_e: nv.FrameE = field(repr=False, default=nv.FrameE(name="WGS84"))
 

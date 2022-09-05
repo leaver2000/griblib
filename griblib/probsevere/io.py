@@ -1,5 +1,5 @@
 # """input output for probsevere data"""
-# __all__ = ["download2parquet","PROBSEVERE_URL_TEMPLATE","VALIDTIME_TEMPLATE"]
+__all__ = ["download2parquet"]
 from pathlib import Path
 from warnings import warn
 from datetime import datetime
@@ -12,7 +12,7 @@ from dask.dataframe.core import DataFrame as DaskDataFrame
 from geopandas import GeoDataFrame
 from requests import Session, HTTPError
 
-from griblib.probsevere.typed import FeatureCollection
+from griblib.typing import FeatureCollection
 
 URL_TEMPLATE = "https://mtarchive.geol.iastate.edu/%Y/%m/%d/mrms/ncep/ProbSevere/MRMS_PROBSEVERE_%Y%m%d_%H%M00.json"
 VALIDTIME_TEMPLATE = "%Y%m%d_%H%M%S %Z"

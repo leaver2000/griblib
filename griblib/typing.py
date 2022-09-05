@@ -1,6 +1,17 @@
 from typing import Literal, TypedDict
 
+import numpy as np
+from numpy.typing import NDArray
 
+
+class CUDArray(NDArray):
+    def get(self) -> np.ndarray:
+        ...
+
+
+# ##########################################
+#               PROBSEVERE
+# ##########################################
 class Properties(TypedDict):
     MUCAPE: int
     MLCAPE: int
@@ -48,3 +59,8 @@ class FeatureCollection(TypedDict):
     productionTime: str
     machine: str
     features: list[Feature]
+
+
+# ##########################################
+#
+# ##########################################
