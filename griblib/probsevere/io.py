@@ -1,5 +1,5 @@
-# """input output for probsevere data"""
-# __all__ = ["download2parquet","PROBSEVERE_URL_TEMPLATE","VALIDTIME_TEMPLATE"]
+"""input output for probsevere data"""
+__all__ = ["download2parquet"]
 from pathlib import Path
 from warnings import warn
 from datetime import datetime
@@ -70,8 +70,9 @@ def __generate_from_features(session: Session, *, urls: Iterable[str]) -> Iterab
 
 
 def __wrangle_geometry(df: GeoDataFrame) -> pd.DataFrame:
-    # to keep thins consistent uppercase all of the bounds
-    df[df.bounds.columns.str.upper()] = df.bounds
+    # to keep things consistent uppercase all of the bounds
+    bounds = df.bounds
+    df[bounds.columns.str.upper()] = bounds
     point = df.representative_point()
     df["X"] = point.x
     df["Y"] = point.y
