@@ -140,7 +140,7 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PROJ_LIB="/usr/share/proj" \
     ECCODES_DIR="/usr/include/eccodes" 
     
-RUN python3 -m pip install --upgrade pip && python3 -m pip install tensorflow-gpu
+RUN python3 -m pip install --upgrade pip && python3 -m pip install "tensorflow-gpu"
 
 RUN python3 -m pip install \
         pandas \

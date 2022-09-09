@@ -60,11 +60,10 @@ def __generate_from_features(session: Session, *, urls: Iterable[str]) -> Iterab
         features = fc["features"]
         # in the event no storms were record, continue
         if not features:
-            # warn(f"url contained no features: {url}")
+            # geojson file contained no features
             continue
 
         df = GeoDataFrame.from_features(features)
-        # validtime = datetime.strptime(fc["validTime"], "%Y%m%d_%H%M%S %Z")
         df["VALIDTIME"] = datetime.strptime(fc["validTime"], VALIDTIME_TEMPLATE)
         yield df
 
