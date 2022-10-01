@@ -1,5 +1,5 @@
 """common grib object"""
-from typing import Callable, Literal, Iterator, overload
+from typing import Callable, Literal, Iterator, overload, Union
 import xarray as xr
 
 
@@ -29,7 +29,7 @@ def filter_by_level(
 ):
     """decorator function around xarray.open_mfdataset"""
 
-    def func_wrapper(func: Callable[["GribBase"], dict[str, str] | None]):
+    def func_wrapper(func: Callable[["GribBase"], Union[dict[str, str] , None]]):
         """intermediate func wrapper contains the callback which returns the default return when called"""
 
         @overload

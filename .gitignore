@@ -9,3 +9,6 @@ bucket/
 hrrr/
 node_modules/
 data/
+store/
+data-bucket/
+**/.ipynb_checkpoints/

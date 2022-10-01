@@ -4,13 +4,37 @@ import xarray as xr
 
 from griblib.common import GribBase, filter_by_level
 from griblib._abc import DocStrings
-
+level_types = [
+    "hybrid",
+    "depthBelowLandLayer",
+    "atmosphere",
+    "cloudTop",
+    "surface",
+    "heightAboveGround",
+    "isothermal",
+    "pressureFromGroundLayer",
+    "sigmaLayer",
+    "meanSea",
+    "isobaricInhPa",
+    "heightAboveGroundLayer",
+    "sigma",
+    "atmosphereSingleLayer",
+    "depthBelowLand",
+    "isobaricLayer",
+    "lowCloudLayer",
+    "middleCloudLayer",
+    "highCloudLayer",
+    "cloudCeiling",
+    "cloudBase",
+    "nominalTop",
+    "isothermZero",
+    "highestTroposphericFreezing",
+    "adiabaticCondensation",
+    "equilibrium",
+    "unknown",
+]
 
 class ByLevel(GribBase, DocStrings):
-    # @property
-    # def type_of_level(self):
-    #     """list of typeOfLevel arguments that should be passed when opening a dataset"""
-    #     return LEVEL_TYPES
 
     @filter_by_level("atmosphere")
     def atmosphere(self):
@@ -32,11 +56,14 @@ class ByLevel(GribBase, DocStrings):
 
 class XarrayHrrr(ByLevel):
     def geopotential_height(self, level="isothermal") -> xr.Dataset:
-        match level:
-            case "isothermal":
-                return super().isothermal(name="Geopotential Height", stepType="instant")
-            case "hybrid":
-                return super().hybrid(name="Geopotential Height")
+    
+        if level == "isothermal":
+            return super().isothermal(name="Geopotential Height", stepType="instant")
+        elif level == "hybrid":
+            return super().hybrid(name="Geopotential Height")
+        raise NotImplementedError
+
+
 
     def pressure(self) -> xr.Dataset:
         return super().hybrid(name="Pressure")
