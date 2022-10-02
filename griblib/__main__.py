@@ -15,7 +15,7 @@ def main(files: tuple[Path, ...]):
 if __name__ == "__main__":
     ps_data = Path.cwd() / "data-bucket"
     all_files = tuple(ps_data.rglob("*.pq"))
-    assert len(all_files) == 8612
-    bbox = BoundingBox(20.005, 54.995, -129.995, -60.005, shape=(7000, 2500))
-
-    main(all_files)
+    print(len(all_files))
+    # assert len(all_files) == 8612
+    # bbox = BoundingBox(20.005, 54.995, -129.995, -60.005, shape=(7000, 2500))
+    # main(all_files)
