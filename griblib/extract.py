@@ -61,12 +61,12 @@ def gmgsi(start: TimeLike, stop: TimeLike, product: GMGSIProducts = "GMGSI_WV"):
     Global Mosaic of Geostationary Satellite Imagery
     """
     urls = pd.date_range(start, stop, freq="H").strftime(get_url_template(product))
-    paths = asyncio.run(_main(urls))#[path for path in asyncio.run(_main(urls)) if path]
+    paths = asyncio.run(_main(urls))  # [path for path in asyncio.run(_main(urls)) if path]
     paths = [path for path in paths if path]
     # return paths
     # if not paths:
     #     return None
-    
+
     ds = xr.open_mfdataset(paths, engine="netcdf4", concat_dim="time", combine="nested")
     for path in paths:
         path.unlink()
