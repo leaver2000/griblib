@@ -44,8 +44,7 @@ async def fetch_path(session: aiohttp.ClientSession, url: list[str]) -> Union[Pa
 async def fetch_all_paths(session: aiohttp.ClientSession, urls: list[str]) -> list[Path]:
     tasks = []
     for url in urls:
-        task = asyncio.create_task(fetch_path(session, url))
-        if task:
+        if task := asyncio.create_task(fetch_path(session, url)):
             tasks.append(task)
 
     return await asyncio.gather(*tasks)

@@ -75,15 +75,15 @@ class QueryEnumMeta(EnumMeta):
         return super().__hash__()
 
 class QueryEnum(StrEnum, metaclass=QueryEnumMeta):
-    def _generate_next_value_(name: str, *_) -> str:
-        return name
+    def _generate_next_value_(self, *_) -> str:
+        return self
 
     def __repr__(self):
         return f"{self.__query_name__}={self.value}"
 
     @classmethod
-    def __lt__(self, __o: "QueryEnum") -> bool:
-        return self.__query_name__ < __o.__query_name__
+    def __lt__(cls, __o: "QueryEnum") -> bool:
+        return cls.__query_name__ < __o.__query_name__
 
     @classmethod
     @property
@@ -128,7 +128,7 @@ def main():
     assert Models.GALWEM in Models
     assert Models in ("GALWEM", "NAM")
 
-    assert not "BAD_USER_REQUEST" in Models
+    assert "BAD_USER_REQUEST" not in Models
 
     assert f"{localhost}?{Models & Parameters}" == f"{localhost}?{QueryMap(Models,Parameters)}"
     # 3rd party libs

@@ -49,11 +49,11 @@ def filter_by_level(
 
             default_return = func(grib)
 
-            if not default_return:
-                filter_by_keys = {"typeOfLevel": level} | kwargs
-            else:
-                filter_by_keys = {"typeOfLevel": level} | default_return | kwargs
-
+            filter_by_keys = (
+                {"typeOfLevel": level} | default_return | kwargs
+                if default_return
+                else {"typeOfLevel": level} | kwargs
+            )
             ds: xr.Dataset = xr.open_mfdataset(
                 grib.multi_file_dataset(),
                 concat_dim="valid_time",

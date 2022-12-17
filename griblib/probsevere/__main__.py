@@ -11,9 +11,7 @@ parser.add_argument("--end", help="--end 2022-03-02", required=True)
 parser.add_argument("--path", required=True)
 # bin/download_probsevere --path=./data-bucket --start=2022-03-01 --end=2022-08-01
 def date_handler(arg: str) -> datetime:
-    if arg == "now":
-        return datetime.utcnow()
-    return datetime.fromisoformat(arg)
+    return datetime.utcnow() if arg == "now" else datetime.fromisoformat(arg)
 
 
 def main() -> int:

@@ -57,7 +57,7 @@ def enforce_literal(exc: Exception = Exception, case_insensitive: bool = True):
 
         def inner(*args, **kwargs):
             for k, v in enforce:
-                if not kwargs[k] in v:
+                if kwargs[k] not in v:
                     raise exc
             return func(*args, **kwargs)
 
